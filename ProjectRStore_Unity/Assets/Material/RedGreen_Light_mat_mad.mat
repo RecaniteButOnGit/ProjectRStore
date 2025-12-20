@@ -1,0 +1,85 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: RedGreen_Light_mat_mad
+  m_Shader: {fileID: 4800000, guid: 03aaf8c93ed02594caccc8a4d7f3acfb, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords:
+  - _SURFACETEXTUREMODE_UV
+  - _TEXTUREMODE_TRIPLANAR_WS
+  m_InvalidKeywords:
+  - _INVERTEMISSIONFRESNEL_ON
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties:
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+      _BaseMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+      _BumpMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+      _DetailNormalMap:
+        m_Texture: {fileID: 2800000, guid: 27fd666216207ec4898b1f0470c84029, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+      _EmissionMap:
+        m_Texture: {fileID: 2800000, guid: df46c836226449742847f941683d9f21, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+      _HatchingTex:
+        m_Texture: {fileID: 2800000, guid: 5be8a306e00e48e478b7b6fc79f2e034, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+      _HatchingTex2:
+        m_Texture: {fileID: 2800000, guid: 42cce61ad02ee1b4bbb4bfeebb86608b, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: {}
+    m_Floats:
+      _BumpScale: 1
+      _Cull: 2
+      _Cutoff: 0.5
+      _DetailNormalMapScale: 1
+      _DistanceToDecrease: 5
+      _DstBlend: 0
+      _EmissionFresnelPower: 3
+      _FrontSpotIntensity: 0.35
+      _HatchingTexTile: 1
+      _HighlightIntensity: 1
+      _HighlightRange: 0.5
+      _InvertEmissionFresnel: 1
+      _OutlineThreshold: 0.0035
+      _OutlineWidth: 1
+      _OutlineWidthMax: 2
+      _SrcBlend: 1
+      _SurfaceTextureMode: 0
+      _TestSlider: 0
+      _TestValue: 0.018
+      _TextureMode: 1
+      _UseEmissionFresnel: 1
+      _UseOutlineFlatSurfaceRemoval: 0
+      _UseVertexColor: 0
+      _ZTest: 4
+      _ZWrite: 1
+    m_Colors:
+      _BaseColor: {r: 0.3, g: 0.3, b: 0.3, a: 1}
+      _EmissionColor: {r: 1, g: 1, b: 1, a: 1}
+      _HighlightDir: {r: -7, g: 3, b: -5, a: 1}
+      _OutlineColor: {r: 0, g: 0, b: 0, a: 1}
+  m_BuildTextureStacks: []

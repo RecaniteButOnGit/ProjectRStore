@@ -1,0 +1,107 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_Lightings_Inst002
+  m_Shader: {fileID: 4800000, guid: 450c2f532adf02149a2265441bc5c13e, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords:
+  - ENUM_01_TOGGLE_USE_UV_CONTROL_DEFAULT
+  - ENUM_02_MASKTEX_CHOICE_R
+  - _RGBA_CHOICE_G
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties:
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+      Texture2D_608bcc14a42f4b4e8297ef0864da5f0a:
+        m_Texture: {fileID: 2800000, guid: 8345c4ec0490d3e4eb3a5f1345042cc4, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+      _01_MainTex:
+        m_Texture: {fileID: 2800000, guid: a0670c6c065c76a4a9a6f9fd13877528, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+      _02_DissolveTex:
+        m_Texture: {fileID: 2800000, guid: dbe376d2b6486ab4c997952cdf566d0c, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+      _03_MaskTex:
+        m_Texture: {fileID: 2800000, guid: 1b58fb21b18cf92478e3ad876550c784, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+      _05_ColorTex:
+        m_Texture: {fileID: 2800000, guid: 1b58fb21b18cf92478e3ad876550c784, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+      unity_Lightmaps:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+      unity_LightmapsInd:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+      unity_ShadowMasks:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: {}
+    m_Floats:
+      Boolean_150eceaa8f7f48908496fc5a47502b1e: 1
+      Boolean_2a0b3641d8ba4bc8879a9236dd9994a4: 1
+      Boolean_ALPHA_Depthfade: 1
+      Boolean_Toggle_USE_Refine: 0
+      Boolean_USE_ColorTexHUE: 0
+      Boolean_USE_DissolveTex: 1
+      Boolean_USE_DotBlend: 0
+      Boolean_USE_FadeBaseOnViewAngle: 0
+      Boolean_USE_VertexOffset: 0
+      Boolean_c3c96277cf8d4f10a132a2a6ad8ecee1: 0
+      ENUM_01_TOGGLE_USE_UV_CONTROL: 0
+      ENUM_02_MASKTEX_CHOICE: 0
+      Vector1_581da4ffc3484f5680b823a5f6616fee: 0
+      _00_CellDensity: 2
+      _00_DotBlendSpeed: 0.25
+      _00_DotScale: 120
+      _01_MainTexAlphaADD: 0
+      _01_MainTexIntensity: 1
+      _01_MainTexPower: 1
+      _01_MainTex_Saturation: 1
+      _02_DissolveDebug: 0
+      _02_DissolveSharpness: 6
+      _04_DistortIntensity: 0.06
+      _05_ColorTexHUE: 0
+      _06_VertexSpeed: 0.2
+      _06_VertexTexIntensity: 0.2
+      _ALPHA_Depthfade: 5
+      _ALPHA_FadeBasedOnViewAngle: 0.5
+      _BOOLEAN_TOGGLE_USE_RGBA_CHOICE: 0
+      _BUILTIN_QueueControl: 0
+      _BUILTIN_QueueOffset: 0
+      _FadeBasedOnViewAngleIntensity: 1
+      _HueShift: 0
+      _QueueControl: 0
+      _QueueOffset: 0
+      _RGBA_CHOICE: 1
+    m_Colors:
+      _01_MainTexColor: {r: 20.078432, g: 43.16863, b: 95.87451, a: 0}
+      _01_MainTex_Tiling_Offset: {r: 1, g: 1, b: 0, a: 0}
+      _01_Refine: {r: 1, g: 1, b: 1, a: 1}
+      _02_DissolveTex_Tiling_Offset: {r: 0.2, g: 1, b: 0, a: 0}
+      _03_MaskTex_Tiling_Offset: {r: 1, g: 1, b: 0, a: 0}
+      _04_DistortTex_Tiling_Offset: {r: 3, g: 4, b: -1, a: 0}
+      _Twinkle_R_Speed_G_Min_B_MaxA_Mul: {r: 20, g: 0, b: 1, a: 3}
+  m_BuildTextureStacks: []
