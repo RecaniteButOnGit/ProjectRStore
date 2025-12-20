@@ -1,5 +1,18 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-7744250609419883209
+MonoBehaviour:
+  m_ObjectHideFlags: 11
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  version: -1
 --- !u!21 &2100000
 Material:
   serializedVersion: 8
@@ -8,20 +21,20 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: CeilingLeaves_UV
-  m_Shader: {fileID: 4800000, guid: f2bdf7612d08e724585a2985bef6e66a, type: 3}
+  m_Shader: {fileID: 4800000, guid: 933532a4fcc9baf4fa0491de14d08ed7, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
-  m_InvalidKeywords:
+  m_ValidKeywords:
+  - _DETAIL_MULX2
+  - _ENVIRONMENTREFLECTIONS_OFF
   - _NORMALMAP
-  - _SURFACETEXTUREMODE_UV
-  - _TEXTUREMODE_TRIPLANAR_WS
-  - _USECINEMATICLIGHTING_ON
+  m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
-  stringTagMap: {}
+  stringTagMap:
+    RenderType: Opaque
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -60,7 +73,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: a59a546c6a8f3384e920eb6c45cf8b2c, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MetallicGlossMap:
@@ -108,7 +121,7 @@ Material:
     - _DstBlend: 0
     - _DstBlendAlpha: 0
     - _EmissionFresnelPower: 1
-    - _EnvironmentReflections: 1
+    - _EnvironmentReflections: 0
     - _FrontSpotIntensity: 0.35
     - _GlossMapScale: 0
     - _Glossiness: 0
@@ -118,6 +131,7 @@ Material:
     - _HighlightRange: 0.5
     - _InvertEmissionFresnel: 0
     - _Metallic: 0
+    - _Mode: 0
     - _OcclusionStrength: 1
     - _OutlineThreshold: 0.0035
     - _OutlineWidth: 1
@@ -128,7 +142,7 @@ Material:
     - _PosterizeEdgeDark: 0.05
     - _QueueOffset: 0
     - _ReceiveShadows: 1
-    - _Smoothness: 0.5
+    - _Smoothness: 0
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SpookinessLocal: 0
@@ -139,6 +153,7 @@ Material:
     - _TestSlider: 0.5
     - _TestValue: 1
     - _TextureMode: 1
+    - _UVSec: 0
     - _UseCinematicLighting: 1
     - _UseEmissionFresnel: 0
     - _UseOutlineFlatSurfaceRemoval: 0

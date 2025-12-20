@@ -1,5 +1,18 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-444120934935420922
+MonoBehaviour:
+  m_ObjectHideFlags: 11
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  version: 7
 --- !u!21 &2100000
 Material:
   serializedVersion: 8
@@ -8,78 +21,142 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: RedGreen_Light_mat
-  m_Shader: {fileID: 4800000, guid: 03aaf8c93ed02594caccc8a4d7f3acfb, type: 3}
+  m_Shader: {fileID: 4800000, guid: 933532a4fcc9baf4fa0491de14d08ed7, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
-  - _SURFACETEXTUREMODE_UV
-  - _TEXTUREMODE_TRIPLANAR_WS
-  m_InvalidKeywords:
-  - _INVERTEMISSIONFRESNEL_ON
+  - _DETAIL_MULX2
+  m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
-  stringTagMap: {}
+  stringTagMap:
+    RenderType: Opaque
   disabledShaderPasses: []
-  m_LockedProperties:
+  m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
-      _BaseMap:
+    - _BaseMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-      _BumpMap:
+    - _BumpMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-      _DetailNormalMap:
+    - _DetailAlbedoMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DetailMask:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DetailNormalMap:
         m_Texture: {fileID: 2800000, guid: 27fd666216207ec4898b1f0470c84029, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-      _EmissionMap:
+    - _EmissionMap:
         m_Texture: {fileID: 2800000, guid: c5154842d7340f24080837aeea2ddbbe, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-      _HatchingTex:
+    - _HatchingTex:
         m_Texture: {fileID: 2800000, guid: 5be8a306e00e48e478b7b6fc79f2e034, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-      _HatchingTex2:
+    - _HatchingTex2:
         m_Texture: {fileID: 2800000, guid: 42cce61ad02ee1b4bbb4bfeebb86608b, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    m_Ints: {}
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MetallicGlossMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _OcclusionMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _ParallaxMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _SpecGlossMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - unity_Lightmaps:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - unity_LightmapsInd:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - unity_ShadowMasks:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
     m_Floats:
-      _BumpScale: 1
-      _Cull: 2
-      _Cutoff: 0.5
-      _DetailNormalMapScale: 1
-      _DistanceToDecrease: 5
-      _DstBlend: 0
-      _EmissionFresnelPower: 3
-      _FrontSpotIntensity: 0.35
-      _HatchingTexTile: 1
-      _HighlightIntensity: 1
-      _HighlightRange: 0.5
-      _InvertEmissionFresnel: 1
-      _OutlineThreshold: 0.0035
-      _OutlineWidth: 1
-      _OutlineWidthMax: 2
-      _SrcBlend: 1
-      _SurfaceTextureMode: 0
-      _TestSlider: 0
-      _TestValue: 0.018
-      _TextureMode: 1
-      _UseEmissionFresnel: 1
-      _UseOutlineFlatSurfaceRemoval: 0
-      _UseVertexColor: 0
-      _ZTest: 4
-      _ZWrite: 1
+    - _AlphaClip: 0
+    - _AlphaToMask: 0
+    - _Blend: 0
+    - _BlendModePreserveSpecular: 1
+    - _BumpScale: 1
+    - _ClearCoatMask: 0
+    - _ClearCoatSmoothness: 0
+    - _Cull: 2
+    - _Cutoff: 0.5
+    - _DetailAlbedoMapScale: 1
+    - _DetailNormalMapScale: 1
+    - _DistanceToDecrease: 5
+    - _DstBlend: 0
+    - _DstBlendAlpha: 0
+    - _EmissionFresnelPower: 3
+    - _EnvironmentReflections: 1
+    - _FrontSpotIntensity: 0.35
+    - _GlossMapScale: 0
+    - _Glossiness: 0
+    - _GlossyReflections: 0
+    - _HatchingTexTile: 1
+    - _HighlightIntensity: 1
+    - _HighlightRange: 0.5
+    - _InvertEmissionFresnel: 1
+    - _Metallic: 0
+    - _OcclusionStrength: 1
+    - _OutlineThreshold: 0.0035
+    - _OutlineWidth: 1
+    - _OutlineWidthMax: 2
+    - _Parallax: 0.005
+    - _QueueOffset: 0
+    - _ReceiveShadows: 1
+    - _Smoothness: 0
+    - _SmoothnessTextureChannel: 0
+    - _SpecularHighlights: 1
+    - _SrcBlend: 1
+    - _SrcBlendAlpha: 1
+    - _Surface: 0
+    - _SurfaceTextureMode: 0
+    - _TestSlider: 0
+    - _TestValue: 0.018
+    - _TextureMode: 1
+    - _UseEmissionFresnel: 1
+    - _UseOutlineFlatSurfaceRemoval: 0
+    - _UseVertexColor: 0
+    - _WorkflowMode: 1
+    - _ZTest: 4
+    - _ZWrite: 1
     m_Colors:
-      _BaseColor: {r: 0.3, g: 0.3, b: 0.3, a: 1}
-      _EmissionColor: {r: 1, g: 1, b: 1, a: 1}
-      _HighlightDir: {r: -7, g: 3, b: -5, a: 1}
-      _OutlineColor: {r: 0, g: 0, b: 0, a: 1}
+    - _BaseColor: {r: 0.3, g: 0.3, b: 0.3, a: 1}
+    - _Color: {r: 0.29999998, g: 0.29999998, b: 0.29999998, a: 1}
+    - _EmissionColor: {r: 1, g: 1, b: 1, a: 1}
+    - _HighlightDir: {r: -7, g: 3, b: -5, a: 1}
+    - _OutlineColor: {r: 0, g: 0, b: 0, a: 1}
+    - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []
