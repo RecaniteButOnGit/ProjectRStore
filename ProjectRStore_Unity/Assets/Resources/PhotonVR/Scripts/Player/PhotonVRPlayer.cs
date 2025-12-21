@@ -4,7 +4,6 @@ using UnityEngine;
 
 using Photon.Pun;
 using Photon.Realtime;
-
 using TMPro;
 
 namespace Photon.VR.Player
@@ -17,15 +16,18 @@ namespace Photon.VR.Player
         public Transform LeftHand;
         public Transform RightHand;
 
+        [Header("Item Anchors (Mirror Only)")]
+        public Transform LeftHandItemAnchor;
+        public Transform RightHandItemAnchor;
+
         [Tooltip("The objects that will get the colour of the player applied to them")]
         public List<MeshRenderer> ColourObjects = new List<MeshRenderer>();
 
         [Space]
-        [Tooltip("Feel free to add as many slots as you feel necessary")]
         public List<CosmeticSlot> CosmeticSlots = new List<CosmeticSlot>();
 
         [Header("Other")]
-        public TextMeshProUGUI NameText; // ✅ FIXED TYPE
+        public TextMeshProUGUI NameText;
         public bool HideLocalPlayer = true;
 
         private void Awake()
@@ -44,29 +46,29 @@ namespace Photon.VR.Player
                 }
             }
 
-            // Auto-cleaned by Photon when leaving room
             DontDestroyOnLoad(gameObject);
-
             _RefreshPlayerValues();
         }
 
         private void Update()
         {
-            if (!photonView.IsMine)
+            if (!photonView.IsMine || PhotonVRManager.Manager == null)
                 return;
 
-            if (PhotonVRManager.Manager == null)
-                return;
+            Head.SetPositionAndRotation(
+                PhotonVRManager.Manager.Head.position,
+                PhotonVRManager.Manager.Head.rotation
+            );
 
-            // Mirror real rig → network rig
-            Head.position = PhotonVRManager.Manager.Head.position;
-            Head.rotation = PhotonVRManager.Manager.Head.rotation;
+            LeftHand.SetPositionAndRotation(
+                PhotonVRManager.Manager.LeftHand.position,
+                PhotonVRManager.Manager.LeftHand.rotation
+            );
 
-            RightHand.position = PhotonVRManager.Manager.RightHand.position;
-            RightHand.rotation = PhotonVRManager.Manager.RightHand.rotation;
-
-            LeftHand.position = PhotonVRManager.Manager.LeftHand.position;
-            LeftHand.rotation = PhotonVRManager.Manager.LeftHand.rotation;
+            RightHand.SetPositionAndRotation(
+                PhotonVRManager.Manager.RightHand.position,
+                PhotonVRManager.Manager.RightHand.rotation
+            );
         }
 
         public void RefreshPlayerValues()
@@ -82,13 +84,9 @@ namespace Photon.VR.Player
 
         private void _RefreshPlayerValues()
         {
-            // ---- NAME ----
-            if (NameText != null && photonView.Owner != null)
-            {
+            if (NameText && photonView.Owner != null)
                 NameText.text = photonView.Owner.NickName;
-            }
 
-            // ---- COLOUR ----
             if (photonView.Owner != null &&
                 photonView.Owner.CustomProperties.ContainsKey("Colour"))
             {
@@ -96,14 +94,10 @@ namespace Photon.VR.Player
                     (string)photonView.Owner.CustomProperties["Colour"]
                 );
 
-                foreach (MeshRenderer renderer in ColourObjects)
-                {
-                    if (renderer != null)
-                        renderer.material.color = col;
-                }
+                foreach (var r in ColourObjects)
+                    if (r) r.material.color = col;
             }
 
-            // ---- COSMETICS ----
             if (photonView.Owner != null &&
                 photonView.Owner.CustomProperties.ContainsKey("Cosmetics"))
             {
@@ -111,21 +105,16 @@ namespace Photon.VR.Player
                     photonView.Owner.CustomProperties["Cosmetics"]
                     as Dictionary<string, string>;
 
-                if (cosmetics != null)
-                {
-                    foreach (var cosmetic in cosmetics)
-                    {
-                        foreach (CosmeticSlot slot in CosmeticSlots)
-                        {
-                            if (slot.SlotName != cosmetic.Key)
-                                continue;
+                if (cosmetics == null) return;
 
-                            foreach (Transform obj in slot.Object)
-                            {
-                                if (obj != null)
-                                    obj.gameObject.SetActive(obj.name == cosmetic.Value);
-                            }
-                        }
+                foreach (var kvp in cosmetics)
+                {
+                    foreach (var slot in CosmeticSlots)
+                    {
+                        if (slot.SlotName != kvp.Key) continue;
+
+                        foreach (Transform obj in slot.Object)
+                            if (obj) obj.gameObject.SetActive(obj.name == kvp.Value);
                     }
                 }
             }
