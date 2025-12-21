@@ -8,10 +8,36 @@ public class HandGrabber : MonoBehaviour
     [Header("Hand")]
     public bool IsLeftHand = true;
 
+    [Header("Rig Mode")]
+    [Tooltip("OFF = Local rig (uses a physics joint, no parenting). ON = Mirror/remote rig (parents item to anchor).")]
+    public bool IsMirrorRig = false;
+
     [Header("Grab")]
     [Tooltip("If null, auto-finds ItemAnchor under parent hand controller.")]
     public Transform LocalHandAnchor;
     public string ItemsLayerName = "Items";
+
+    [Header("Local Rig Joint Settings")]
+    [Tooltip("If true (recommended), local rig uses a joint instead of parenting.")]
+    public bool UseJointOnLocalRig = true;
+
+    [Tooltip("Disable gravity while held on local rig (joint mode).")]
+    public bool DisableGravityWhileHeld = true;
+
+    [Tooltip("If true, disables collisions between the jointed item and the physics anchor rigidbody.")]
+    public bool JointEnableCollision = false;
+
+    [Tooltip("Break force for the joint (Infinity = unbreakable).")]
+    public float JointBreakForce = Mathf.Infinity;
+
+    [Tooltip("Break torque for the joint (Infinity = unbreakable).")]
+    public float JointBreakTorque = Mathf.Infinity;
+
+    [Tooltip("Mass scaling for the joint (can help stability).")]
+    public float JointMassScale = 1f;
+
+    [Tooltip("Connected mass scaling for the joint (can help stability).")]
+    public float JointConnectedMassScale = 1f;
 
     [Header("Debug")]
     public bool DebugLogs = true;
@@ -20,6 +46,12 @@ public class HandGrabber : MonoBehaviour
     private int itemsLayer = -1;
     private readonly List<Rigidbody> nearby = new();
     private Rigidbody held;
+
+    // Local rig joint bits
+    private Transform physicsAnchor;
+    private Rigidbody physicsAnchorRb;
+    private FixedJoint heldJoint;
+    private bool heldPrevUseGravity;
 
     // Cache NetworkItem by ItemID (for RPC lookups)
     private static readonly Dictionary<int, NetworkItem> idToItemCache = new();
@@ -41,7 +73,26 @@ public class HandGrabber : MonoBehaviour
                                : "❌ Could not auto-find ItemAnchor under parent. Assign LocalHandAnchor.");
         }
 
+        if (!IsMirrorRig && UseJointOnLocalRig)
+            EnsurePhysicsAnchor();
+
         RebuildItemCacheIfNeeded(force: true);
+    }
+
+    private void OnDisable()
+    {
+        // Clean up if you disable the hand while holding something
+        if (held != null) Drop();
+    }
+
+    private void FixedUpdate()
+    {
+        // Keep the physics anchor glued to the tracked anchor (local rig joint mode)
+        if (!IsMirrorRig && UseJointOnLocalRig && physicsAnchorRb != null && LocalHandAnchor != null)
+        {
+            physicsAnchorRb.MovePosition(LocalHandAnchor.position);
+            physicsAnchorRb.MoveRotation(LocalHandAnchor.rotation);
+        }
     }
 
     // ---------------------------
@@ -113,17 +164,77 @@ public class HandGrabber : MonoBehaviour
 
         held = rb;
 
-        // Simple: parent to hand + kinematic ON
-        if (LocalHandAnchor != null)
-            rb.transform.SetParent(LocalHandAnchor, true);
-        else
-            LogWarn("LocalHandAnchor missing; parenting skipped.");
+        // MIRROR/REMOTE RIG: parent + kinematic
+        if (IsMirrorRig || !UseJointOnLocalRig)
+        {
+            if (LocalHandAnchor != null)
+                rb.transform.SetParent(LocalHandAnchor, true);
+            else
+                LogWarn("LocalHandAnchor missing; parenting skipped.");
 
-        rb.isKinematic = true;
+            rb.isKinematic = true;
+            rb.velocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+
+            Log($"✅ Grabbed (PARENT MODE) '{rb.name}' itemID={ni.ItemID}");
+            return;
+        }
+
+        // LOCAL RIG: JOINT MODE (NO parenting)
+        if (LocalHandAnchor == null)
+        {
+            LogWarn("TryGrab: LocalHandAnchor missing (joint mode). Falling back to parent mode.");
+            rb.transform.SetParent(null, true);
+            rb.transform.SetParent(LocalHandAnchor, true);
+            rb.isKinematic = true;
+            return;
+        }
+
+        EnsurePhysicsAnchor();
+
+        if (physicsAnchorRb == null)
+        {
+            LogErr("TryGrab: physicsAnchorRb missing; cannot joint-grab.");
+            return;
+        }
+
+        // Make sure item isn't parented to anything
+        rb.transform.SetParent(null, true);
+
+        // Remember & tweak physics while held
+        heldPrevUseGravity = rb.useGravity;
+        if (DisableGravityWhileHeld) rb.useGravity = false;
+
+        // Optional: bump stability (you can tweak these if needed)
+        // rb.interpolation = RigidbodyInterpolation.Interpolate;
+
+        // Snap the item to the hand anchor pose (and apply optional snap offset)
+        Quaternion targetRot = LocalHandAnchor.rotation;
+        Vector3 targetPos = LocalHandAnchor.position;
+
+        if (ni != null && ni.SnapGrab)
+        {
+            targetPos = LocalHandAnchor.TransformPoint(ni.SnapLocalPosition);
+            targetRot = LocalHandAnchor.rotation * Quaternion.Euler(ni.SnapLocalEulerAngles);
+        }
+
+        rb.position = targetPos;
+        rb.rotation = targetRot;
+
         rb.velocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
+        rb.isKinematic = false;
 
-        Log($"✅ Grabbed '{rb.name}' itemID={ni.ItemID}");
+        // Create joint on the HELD item, connecting to our kinematic physics anchor
+        heldJoint = rb.gameObject.AddComponent<FixedJoint>();
+        heldJoint.connectedBody = physicsAnchorRb;
+        heldJoint.enableCollision = JointEnableCollision;
+        heldJoint.breakForce = JointBreakForce;
+        heldJoint.breakTorque = JointBreakTorque;
+        heldJoint.massScale = Mathf.Max(0.0001f, JointMassScale);
+        heldJoint.connectedMassScale = Mathf.Max(0.0001f, JointConnectedMassScale);
+
+        Log($"✅ Grabbed (JOINT MODE) '{rb.name}' itemID={ni.ItemID}");
     }
 
     private void Drop()
@@ -132,10 +243,51 @@ public class HandGrabber : MonoBehaviour
         held = null;
         if (!rb) return;
 
+        // LOCAL JOINT MODE: remove joint + restore physics
+        if (!IsMirrorRig && UseJointOnLocalRig)
+        {
+            if (heldJoint != null)
+            {
+                Destroy(heldJoint);
+                heldJoint = null;
+            }
+
+            rb.useGravity = heldPrevUseGravity;
+            rb.isKinematic = false;
+            rb.transform.SetParent(null, true);
+
+            Log($"✅ Dropped (JOINT MODE) '{rb.name}'");
+            return;
+        }
+
+        // MIRROR/REMOTE MODE: unparent + un-kinematic
         rb.transform.SetParent(null, true);
         rb.isKinematic = false;
 
-        Log($"✅ Dropped '{rb.name}'");
+        Log($"✅ Dropped (PARENT MODE) '{rb.name}'");
+    }
+
+    private void EnsurePhysicsAnchor()
+    {
+        if (physicsAnchorRb != null) return;
+        if (LocalHandAnchor == null) return;
+
+        // Create a hidden-ish child under the tracked anchor that owns the kinematic Rigidbody
+        var go = new GameObject(IsLeftHand ? "HG_PhysicsAnchor_L" : "HG_PhysicsAnchor_R");
+        go.transform.SetParent(LocalHandAnchor, false);
+        go.transform.localPosition = Vector3.zero;
+        go.transform.localRotation = Quaternion.identity;
+        go.transform.localScale = Vector3.one;
+
+        physicsAnchor = go.transform;
+
+        physicsAnchorRb = go.AddComponent<Rigidbody>();
+        physicsAnchorRb.isKinematic = true;
+        physicsAnchorRb.useGravity = false;
+        physicsAnchorRb.detectCollisions = false;
+        physicsAnchorRb.interpolation = RigidbodyInterpolation.Interpolate;
+
+        Log($"✅ Created physics anchor: {Path(physicsAnchor)}");
     }
 
     private Rigidbody GetClosest()
@@ -171,7 +323,6 @@ public class HandGrabber : MonoBehaviour
 
     public enum ItemButton { Primary = 0, Secondary = 1, Trigger = 2 }
 
-
     // Called by ItemNetworkManager RPC too:
     public static void ApplyItemButtonLocal(int itemId, ItemButton button, float value)
     {
@@ -202,9 +353,9 @@ public class HandGrabber : MonoBehaviour
         // EXACT names you asked for + harmless aliases
         string[] names = button switch
         {
-            ItemButton.Primary   => new[] { "Primary", "OnPrimary", "PrimaryButton", "OnPrimaryButton" },
+            ItemButton.Primary => new[] { "Primary", "OnPrimary", "PrimaryButton", "OnPrimaryButton" },
             ItemButton.Secondary => new[] { "Secondary", "OnSecondary", "SecondaryButton", "OnSecondaryButton" },
-            ItemButton.Trigger   => new[] { "Trigger", "OnTrigger", "TriggerButton", "OnTriggerButton" },
+            ItemButton.Trigger => new[] { "Trigger", "OnTrigger", "TriggerButton", "OnTriggerButton" },
             _ => Array.Empty<string>()
         };
 
@@ -348,31 +499,31 @@ public class HandGrabber : MonoBehaviour
     }
 
 #if UNITY_EDITOR
-[UnityEditor.CustomEditor(typeof(HandGrabber))]
-public class HandGrabberEditor : UnityEditor.Editor
-{
-    public override void OnInspectorGUI()
+    [UnityEditor.CustomEditor(typeof(HandGrabber))]
+    public class HandGrabberEditor : UnityEditor.Editor
     {
-        DrawDefaultInspector();
-
-        UnityEditor.EditorGUILayout.Space(8);
-        UnityEditor.EditorGUILayout.LabelField("Debug Buttons", UnityEditor.EditorStyles.boldLabel);
-
-        var hg = (HandGrabber)target;
-
-        using (new UnityEditor.EditorGUILayout.HorizontalScope())
+        public override void OnInspectorGUI()
         {
-            if (GUILayout.Button("Primary (A)")) hg.PrimaryButton();
-            if (GUILayout.Button("Secondary (B)")) hg.SecondaryButton();
-            if (GUILayout.Button("Trigger")) hg.TriggerButton(1f);
+            DrawDefaultInspector();
+
+            UnityEditor.EditorGUILayout.Space(8);
+            UnityEditor.EditorGUILayout.LabelField("Debug Buttons", UnityEditor.EditorStyles.boldLabel);
+
+            var hg = (HandGrabber)target;
+
+            using (new UnityEditor.EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Primary (A)")) hg.PrimaryButton();
+                if (GUILayout.Button("Secondary (B)")) hg.SecondaryButton();
+                if (GUILayout.Button("Trigger")) hg.TriggerButton(1f);
+            }
+
+            UnityEditor.EditorGUILayout.HelpBox(
+                "Local rig (IsMirrorRig OFF) grabs with a FixedJoint to a kinematic physics anchor (no parenting). " +
+                "Mirror rig (IsMirrorRig ON) uses parenting + kinematic.",
+                UnityEditor.MessageType.Info
+            );
         }
-
-        UnityEditor.EditorGUILayout.HelpBox(
-            "Secondary/Trigger scan the held item's scripts for public void methods named Primary/Secondary/Trigger and invoke them. Sync happens via ItemNetworkManager's PhotonView.",
-            UnityEditor.MessageType.Info
-        );
     }
-}
 #endif
-
 }
