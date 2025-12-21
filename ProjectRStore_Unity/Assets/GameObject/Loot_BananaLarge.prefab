@@ -172,10 +172,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ItemID: 0
   BuyPrice: 0
-  SellPriceOverride: 75
+  SellPriceOverride: 50
   SnapGrab: 0
   SnapLocalPosition: {x: 0, y: 0, z: 0}
   SnapLocalEulerAngles: {x: 0, y: 0, z: 0}
+  CanBeStoredInBackpack: 1
 --- !u!1 &1738423954328442
 GameObject:
   m_ObjectHideFlags: 0

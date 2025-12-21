@@ -293,6 +293,7 @@ GameObject:
   - component: {fileID: 4991419153080588}
   - component: {fileID: 54683661077186030}
   - component: {fileID: 5430529886610233308}
+  - component: {fileID: 4972256105086769342}
   m_Layer: 3
   m_Name: Item_Flashlight
   m_TagString: Untagged
@@ -362,6 +363,22 @@ MonoBehaviour:
   SnapGrab: 1
   SnapLocalPosition: {x: 0, y: 0, z: 0}
   SnapLocalEulerAngles: {x: 0, y: 0, z: 0}
+  CanBeStoredInBackpack: 1
+--- !u!114 &4972256105086769342
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1223557704600141}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1ff19c2092f56d4293f05c1129aaf35, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  target: {fileID: 1156202665682051}
+  forceInitialState: 1
+  initialState: 0
 --- !u!1 &1361354490893650
 GameObject:
   m_ObjectHideFlags: 0

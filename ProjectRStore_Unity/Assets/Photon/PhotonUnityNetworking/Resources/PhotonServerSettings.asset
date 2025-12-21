@@ -47,6 +47,15 @@ MonoBehaviour:
   - RPC_ReleaseItem
   - RPC_Snapshot
   - RPC_ItemButton
+  - RPC_ApplySnapshot
+  - RPC_CloseDoors_PlaySfx
+  - RPC_DoSell_TeleportAndSfx
+  - RPC_OpenDoors_ShowPayout
+  - RPC_PressButton_Master
+  - RPC_TestSell_Master
+  - RPC_DestroyItems_AndPlaySellSfx
+  - RPC_DestroyItems
+  - RPC_PlaySellSfx
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 0

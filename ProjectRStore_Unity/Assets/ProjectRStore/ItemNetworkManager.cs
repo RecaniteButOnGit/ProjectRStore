@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using UnityEngine;
 using Photon.Pun;
 using Photon.Realtime;
@@ -10,6 +13,16 @@ public class ItemNetworkManager : MonoBehaviourPunCallbacks
     [Header("Local anchors (set automatically by HandGrabber, or assign)")]
     public Transform LocalLeftHandAnchor;
     public Transform LocalRightHandAnchor;
+
+    [Header("Auto Item IDs (Scene Items Layer)")]
+    [Tooltip("If true, scans all NetworkItem components whose root GameObject is on the 'Items' layer and ensures unique non-zero IDs.")]
+    public bool AutoEnsureUniqueItemIDs = true;
+
+    [Tooltip("If true, only fixes ItemID==0 or duplicates. If false, rewrites all IDs deterministically.")]
+    public bool OnlyFixZerosAndDuplicates = true;
+
+    [Tooltip("If true, auto-registers all scene items on 'Items' layer at Start.")]
+    public bool AutoRegisterSceneItems = true;
 
     [Header("Debug")]
     public bool DebugLogs = true;
@@ -30,6 +43,12 @@ public class ItemNetworkManager : MonoBehaviourPunCallbacks
     // actor -> mirror root cache
     private readonly Dictionary<int, Transform> mirrorRootByActor = new();
 
+    // HandGrabber reflection cache
+    private static Type _handGrabberType;
+    private static MethodInfo _hbApply_IntIntFloat;
+    private static MethodInfo _hbApply_IntEnumFloat;
+    private static Type _hbItemButtonEnumType;
+
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -37,13 +56,22 @@ public class ItemNetworkManager : MonoBehaviourPunCallbacks
         DontDestroyOnLoad(gameObject);
     }
 
+    private void Start()
+    {
+        if (AutoEnsureUniqueItemIDs)
+            EnsureUniqueIdsForItemsLayer();
+
+        if (AutoRegisterSceneItems)
+            AutoRegisterAllItemsLayer();
+    }
+
     // =========================================================
-    // NEW: BUTTON PRESS SYNC (HandGrabber calls this)
+    // BUTTON PRESS SYNC (HandGrabber calls this)
     // =========================================================
 
     /// <summary>
     /// Broadcast a held-item button press to other clients (sender runs locally already).
-    /// buttonInt must match HandGrabber.ItemButton enum values.
+    /// buttonInt should match HandGrabber's internal enum values.
     /// </summary>
     public void BroadcastItemButton(int itemId, int buttonInt, float value)
     {
@@ -66,24 +94,251 @@ public class ItemNetworkManager : MonoBehaviourPunCallbacks
     [PunRPC]
     private void RPC_ItemButton(int itemId, int buttonInt, float value)
     {
-        // Run same modular scan on this client
-        // NOTE: HandGrabber.ItemButton must be PUBLIC in HandGrabber for this cast to compile.
-        HandGrabber.ApplyItemButtonLocal(itemId, (HandGrabber.ItemButton)buttonInt, value);
+        // Avoid compile-time dependency on HandGrabber.ItemButton (fixes inconsistent accessibility issues).
+        if (!InvokeHandGrabberApplyItemButtonLocal(itemId, buttonInt, value))
+            LogWarn($"RPC_ItemButton: Could not call HandGrabber.ApplyItemButtonLocal for itemID={itemId} button={buttonInt}");
+
         Log($"RPC_ItemButton <- itemID={itemId} button={buttonInt} value={value}");
     }
+
+    private bool InvokeHandGrabberApplyItemButtonLocal(int itemId, int buttonInt, float value)
+    {
+        try
+        {
+            CacheHandGrabberReflection();
+            if (_handGrabberType == null) return false;
+
+            // Preferred overload: ApplyItemButtonLocal(int itemId, int buttonInt, float value)
+            if (_hbApply_IntIntFloat != null)
+            {
+                _hbApply_IntIntFloat.Invoke(null, new object[] { itemId, buttonInt, value });
+                return true;
+            }
+
+            // Fallback overload: ApplyItemButtonLocal(int itemId, ItemButton enum, float value)
+            if (_hbApply_IntEnumFloat != null && _hbItemButtonEnumType != null && _hbItemButtonEnumType.IsEnum)
+            {
+                object enumObj = Enum.ToObject(_hbItemButtonEnumType, buttonInt);
+                _hbApply_IntEnumFloat.Invoke(null, new object[] { itemId, enumObj, value });
+                return true;
+            }
+        }
+        catch (Exception e)
+        {
+            LogWarn($"InvokeHandGrabberApplyItemButtonLocal exception: {e.GetType().Name} {e.Message}");
+        }
+
+        return false;
+    }
+
+    private void CacheHandGrabberReflection()
+    {
+        if (_handGrabberType != null) return;
+
+        _handGrabberType = FindTypeByName("HandGrabber");
+        if (_handGrabberType == null)
+        {
+            LogWarn("HandGrabber type not found (reflection). Button RPCs won't apply.");
+            return;
+        }
+
+        // Try overload: (int,int,float)
+        _hbApply_IntIntFloat = _handGrabberType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+            .FirstOrDefault(m =>
+            {
+                if (m.Name != "ApplyItemButtonLocal") return false;
+                var p = m.GetParameters();
+                return p.Length == 3 && p[0].ParameterType == typeof(int) && p[1].ParameterType == typeof(int) && p[2].ParameterType == typeof(float);
+            });
+
+        // Try overload: (int, enum, float)
+        _hbApply_IntEnumFloat = _handGrabberType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+            .FirstOrDefault(m =>
+            {
+                if (m.Name != "ApplyItemButtonLocal") return false;
+                var p = m.GetParameters();
+                return p.Length == 3 && p[0].ParameterType == typeof(int) && p[2].ParameterType == typeof(float) && p[1].ParameterType.IsEnum;
+            });
+
+        if (_hbApply_IntEnumFloat != null)
+            _hbItemButtonEnumType = _hbApply_IntEnumFloat.GetParameters()[1].ParameterType;
+    }
+
+    private static Type FindTypeByName(string typeName)
+    {
+        // Unity Type.GetType usually fails without assembly-qualified name, so scan assemblies.
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            Type t = null;
+            try { t = asm.GetTypes().FirstOrDefault(x => x.Name == typeName); }
+            catch { /* ignore reflection type load issues */ }
+            if (t != null) return t;
+        }
+        return null;
+    }
+
+    // =========================================================
+    // ITEM REGISTRATION + ID MANAGEMENT
+    // =========================================================
 
     // Register items (call at spawn/start for preplaced)
     public void RegisterItem(NetworkItem ni, Rigidbody rb)
     {
         if (!ni || !rb) return;
+
         if (ni.ItemID == 0)
         {
             LogWarn($"RegisterItem: {rb.name} has ItemID=0 (won't sync).");
             return;
         }
+
         itemsById[ni.ItemID] = rb;
         Log($"Registered itemID={ni.ItemID} name={rb.name}");
     }
+
+    private void AutoRegisterAllItemsLayer()
+    {
+        int itemsLayer = LayerMask.NameToLayer("Items");
+        if (itemsLayer == -1)
+        {
+            LogWarn("Layer 'Items' not found. Create it in Unity (Tags & Layers).");
+            return;
+        }
+
+        var all = FindObjectsOfType<NetworkItem>(true)
+            .Where(ni => ni != null && ni.gameObject.layer == itemsLayer)
+            .OrderBy(ni => BuildStableKey(ni.transform))
+            .ToList();
+
+        int count = 0;
+        foreach (var ni in all)
+        {
+            // root should have it, but be forgiving
+            Rigidbody rb = ni.GetComponent<Rigidbody>();
+            if (rb == null) rb = ni.GetComponentInChildren<Rigidbody>(true);
+            if (rb == null)
+            {
+                LogWarn($"AutoRegister: No Rigidbody found for item '{ni.name}' (ItemID={ni.ItemID}).");
+                continue;
+            }
+
+            if (ni.ItemID != 0)
+            {
+                itemsById[ni.ItemID] = rb;
+                count++;
+            }
+        }
+
+        Log($"AutoRegisterSceneItems: registered {count}/{all.Count} items on 'Items' layer.");
+    }
+
+    private void EnsureUniqueIdsForItemsLayer()
+    {
+        int itemsLayer = LayerMask.NameToLayer("Items");
+        if (itemsLayer == -1)
+        {
+            LogWarn("Layer 'Items' not found. Create it in Unity (Tags & Layers).");
+            return;
+        }
+
+        var items = FindObjectsOfType<NetworkItem>(true)
+            .Where(ni => ni != null && ni.gameObject.layer == itemsLayer)
+            .Select(ni => new { ni, key = BuildStableKey(ni.transform) })
+            .OrderBy(x => x.key, StringComparer.Ordinal)
+            .ToList();
+
+        if (items.Count == 0)
+        {
+            LogWarn("EnsureUniqueIds: No NetworkItem found on 'Items' layer.");
+            return;
+        }
+
+        if (!OnlyFixZerosAndDuplicates)
+        {
+            // Rewrite ALL IDs deterministically: 1..N
+            for (int i = 0; i < items.Count; i++)
+                items[i].ni.ItemID = i + 1;
+
+            Log($"EnsureUniqueIds: Rewrote all ItemIDs deterministically (1..{items.Count}).");
+            return;
+        }
+
+        // Only fix zeros + duplicates, but do it deterministically.
+        // Group by existing ItemID
+        var groups = items.GroupBy(x => x.ni.ItemID).ToList();
+
+        // IDs that are already unique and >0
+        var used = new HashSet<int>(groups.Where(g => g.Key > 0 && g.Count() == 1).Select(g => g.Key));
+
+        // Items that need a new ID (id==0 or duplicates beyond the “winner”)
+        var needsNew = new List<(NetworkItem ni, string key)>();
+
+        foreach (var g in groups)
+        {
+            int id = g.Key;
+
+            if (id == 0)
+            {
+                foreach (var x in g) needsNew.Add((x.ni, x.key));
+                continue;
+            }
+
+            if (g.Count() > 1)
+            {
+                // Keep the one with the smallest key, reassign the rest
+                var ordered = g.OrderBy(x => x.key, StringComparer.Ordinal).ToList();
+                var winner = ordered[0];
+
+                // Winner keeps the ID (even if duplicate group) — but ensure it's counted as used
+                used.Add(id);
+
+                for (int i = 1; i < ordered.Count; i++)
+                    needsNew.Add((ordered[i].ni, ordered[i].key));
+            }
+        }
+
+        needsNew = needsNew.OrderBy(x => x.key, StringComparer.Ordinal).ToList();
+
+        // Assign smallest available positive integers not in used
+        int next = 1;
+        int fixedCount = 0;
+
+        foreach (var x in needsNew)
+        {
+            while (used.Contains(next)) next++;
+            x.ni.ItemID = next;
+            used.Add(next);
+            next++;
+            fixedCount++;
+        }
+
+        if (fixedCount > 0)
+            Log($"EnsureUniqueIds: Fixed {fixedCount} ItemID(s) (zeros/duplicates) on 'Items' layer.");
+        else
+            Log("EnsureUniqueIds: All ItemIDs already unique & non-zero on 'Items' layer.");
+    }
+
+    private string BuildStableKey(Transform t)
+    {
+        // Deterministic key based on scene + full hierarchy path + sibling indices.
+        // This is stable across clients as long as the scene hierarchy matches.
+        var sceneName = t.gameObject.scene.IsValid() ? t.gameObject.scene.name : "NoScene";
+
+        var parts = new List<string>(16);
+        Transform cur = t;
+        while (cur != null)
+        {
+            parts.Add($"{cur.GetSiblingIndex():D4}:{cur.name}");
+            cur = cur.parent;
+        }
+        parts.Reverse();
+
+        return sceneName + "|" + string.Join("/", parts);
+    }
+
+    // =========================================================
+    // HOLD / RELEASE SYNC
+    // =========================================================
 
     public bool IsHeldByOther(int itemId, int myActor)
     {

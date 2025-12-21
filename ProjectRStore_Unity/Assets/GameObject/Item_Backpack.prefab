@@ -84,6 +84,7 @@ Transform:
   m_Children:
   - {fileID: 4549993183726065}
   - {fileID: 4752837099136467}
+  - {fileID: 2440775489452390311}
   m_Father: {fileID: 4101823578698774}
   m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
 --- !u!1 &1063281084665315
@@ -97,6 +98,7 @@ GameObject:
   - component: {fileID: 4101823578698774}
   - component: {fileID: 54413582620832026}
   - component: {fileID: 378275116702970014}
+  - component: {fileID: 6217381885832759434}
   m_Layer: 3
   m_Name: Item_Backpack
   m_TagString: Backpack
@@ -166,6 +168,34 @@ MonoBehaviour:
   SnapLocalPosition: {x: 0, y: 0, z: 0}
   SnapLocalEulerAngles: {x: 0, y: 0, z: 0}
   CanBeStoredInBackpack: 0
+--- !u!114 &6217381885832759434
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1063281084665315}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9fe1813d798b465478c967660c85e2db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  isOpen: 0
+  MouthTrigger: {fileID: 792927629368543794}
+  ItemsLayerName: Items
+  StorePoint: {fileID: 0}
+  DumpSpawnPoint: {fileID: 2440775489452390311}
+  HideMode: 0
+  DumpStartAngle: 45
+  DumpStopAngle: 40
+  DumpInterval: 0.75
+  EjectForce: 1.25
+  DownForce: 0.75
+  LidOrFlap: {fileID: 4273617047520840}
+  OpenXAngle: -100
+  ClosedXAngle: 0
+  RotateLerpSpeed: 12
+  DebugLogs: 1
 --- !u!1 &1121228429375664
 GameObject:
   m_ObjectHideFlags: 0
@@ -230,7 +260,7 @@ Transform:
   m_Children:
   - {fileID: 4155699881933248}
   m_Father: {fileID: 4427797507230247}
-  m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1645791021936483
 GameObject:
   m_ObjectHideFlags: 0
@@ -486,3 +516,34 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &2551148357566628995
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2440775489452390311}
+  m_Layer: 0
+  m_Name: Dump
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2440775489452390311
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2551148357566628995}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.289, z: 0.125}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4185045546419200}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
