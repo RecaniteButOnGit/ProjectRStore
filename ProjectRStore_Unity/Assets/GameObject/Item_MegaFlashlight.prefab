@@ -293,12 +293,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ItemID: 0
-  BuyPrice: 499
+  ComputeItemIdOnAwake: 1
+  AutoRegister: 1
+  BuyPrice: 999
   SellPriceOverride: 0
   SnapGrab: 1
   SnapLocalPosition: {x: 0, y: 0, z: 0}
   SnapLocalEulerAngles: {x: 0, y: 0, z: 0}
   CanBeStoredInBackpack: 1
+  DebugLogs: 0
 --- !u!1 &1358052186258563
 GameObject:
   m_ObjectHideFlags: 0
