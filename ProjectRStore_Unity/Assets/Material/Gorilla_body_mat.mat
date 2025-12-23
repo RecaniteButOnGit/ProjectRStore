@@ -29,7 +29,7 @@ Material:
   - _NORMALMAP
   - _OCCLUSIONMAP
   m_InvalidKeywords: []
-  m_LightmapFlags: 4
+  m_LightmapFlags: 6
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
@@ -42,7 +42,7 @@ Material:
     m_TexEnvs:
     - _BaseMap:
         m_Texture: {fileID: 2800000, guid: f55c10c788eae5c4bae1c0ff5221eb41, type: 3}
-        m_Scale: {x: 0.5, y: 0.5}
+        m_Scale: {x: 2, y: 2}
         m_Offset: {x: 0, y: 0}
     - _BumpMap:
         m_Texture: {fileID: 2800000, guid: c39e1dc3820d68c4c90fdcbaf620ba23, type: 3}
@@ -74,7 +74,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     - _MainTex:
         m_Texture: {fileID: 2800000, guid: f55c10c788eae5c4bae1c0ff5221eb41, type: 3}
-        m_Scale: {x: 0.5, y: 0.5}
+        m_Scale: {x: 2, y: 2}
         m_Offset: {x: 0, y: 0}
     - _MetallicGlossMap:
         m_Texture: {fileID: 0}
@@ -132,7 +132,7 @@ Material:
     - _HighlightRange: 0.35
     - _InvertEmissionFresnel: 0
     - _Metallic: 0
-    - _OcclusionStrength: 0
+    - _OcclusionStrength: 2
     - _OutlineThreshold: 0.0035
     - _OutlineWidth: 1
     - _OutlineWidthMax: 2
