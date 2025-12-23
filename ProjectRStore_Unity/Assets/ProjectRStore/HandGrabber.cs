@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.XR;
 
 public class HandGrabber : MonoBehaviour
 {
@@ -39,6 +40,32 @@ public class HandGrabber : MonoBehaviour
     [Tooltip("Connected mass scaling for the joint (can help stability).")]
     public float JointConnectedMassScale = 1f;
 
+    [Header("XR Controller Input")]
+    [Tooltip("If true, this script will poll XR controllers and call Primary/Secondary/Trigger automatically. (Disabled on mirror rigs.)")]
+    public bool EnableXRControllerInput = true;
+
+    [Tooltip("Trigger value must be above this to count as 'pressed/active'.")]
+    [Range(0f, 1f)]
+    public float TriggerPressThreshold = 0.15f;
+
+    public enum TriggerSendMode
+    {
+        OnPressDown,         // One call when trigger crosses threshold
+        WhileHeldThrottled,  // Repeated calls while held (throttled)
+        OnValueChanged       // Calls when analog value changes enough
+    }
+
+    [Tooltip("How often TriggerButton(value) should be sent.")]
+    public TriggerSendMode TriggerMode = TriggerSendMode.WhileHeldThrottled;
+
+    [Tooltip("Max trigger sends per second in WhileHeldThrottled mode.")]
+    [Range(1f, 60f)]
+    public float TriggerSendHz = 15f;
+
+    [Tooltip("Minimum analog change to send in OnValueChanged mode.")]
+    [Range(0.001f, 0.2f)]
+    public float TriggerValueDelta = 0.03f;
+
     [Header("Debug")]
     public bool DebugLogs = true;
     public bool DebugItemMethodCalls = true;
@@ -52,6 +79,15 @@ public class HandGrabber : MonoBehaviour
     private Rigidbody physicsAnchorRb;
     private FixedJoint heldJoint;
     private bool heldPrevUseGravity;
+
+    // XR device polling
+    private InputDevice xrDevice;
+    private bool xrDeviceValid;
+    private bool prevPrimary;
+    private bool prevSecondary;
+    private bool prevTriggerPressed;
+    private float prevTriggerValue;
+    private float lastTriggerSendTime;
 
     // Cache NetworkItem by ItemID (for RPC lookups)
     private static readonly Dictionary<int, NetworkItem> idToItemCache = new();
@@ -77,12 +113,30 @@ public class HandGrabber : MonoBehaviour
             EnsurePhysicsAnchor();
 
         RebuildItemCacheIfNeeded(force: true);
+
+        // XR hookup
+        TryAcquireXRDevice(force: true);
+        InputDevices.deviceConnected += OnXRDeviceConnected;
+        InputDevices.deviceDisconnected += OnXRDeviceDisconnected;
+    }
+
+    private void OnDestroy()
+    {
+        InputDevices.deviceConnected -= OnXRDeviceConnected;
+        InputDevices.deviceDisconnected -= OnXRDeviceDisconnected;
     }
 
     private void OnDisable()
     {
         // Clean up if you disable the hand while holding something
         if (held != null) Drop();
+    }
+
+    private void Update()
+    {
+        if (!EnableXRControllerInput) return;
+        if (IsMirrorRig) return; // never poll input on mirror/remote rigs
+        PollXRControllers();
     }
 
     private void FixedUpdate()
@@ -93,6 +147,135 @@ public class HandGrabber : MonoBehaviour
             physicsAnchorRb.MovePosition(LocalHandAnchor.position);
             physicsAnchorRb.MoveRotation(LocalHandAnchor.rotation);
         }
+    }
+
+    // ---------------------------
+    // XR INPUT
+    // ---------------------------
+
+    private void OnXRDeviceConnected(InputDevice device)
+    {
+        // If it matches our hand, grab it
+        if (IsDeviceForThisHand(device))
+        {
+            xrDevice = device;
+            xrDeviceValid = xrDevice.isValid;
+            Log($"✅ XR device connected for this hand: {device.name} ({device.characteristics})");
+        }
+    }
+
+    private void OnXRDeviceDisconnected(InputDevice device)
+    {
+        if (xrDeviceValid && device == xrDevice)
+        {
+            xrDeviceValid = false;
+            LogWarn($"XR device disconnected: {device.name}");
+        }
+    }
+
+    private void TryAcquireXRDevice(bool force)
+    {
+        if (!force && xrDeviceValid && xrDevice.isValid) return;
+
+        XRNode node = IsLeftHand ? XRNode.LeftHand : XRNode.RightHand;
+        xrDevice = InputDevices.GetDeviceAtXRNode(node);
+        xrDeviceValid = xrDevice.isValid;
+
+        if (!xrDeviceValid)
+        {
+            // Fallback: search by characteristics
+            var list = new List<InputDevice>();
+            var desired = InputDeviceCharacteristics.Controller |
+                          (IsLeftHand ? InputDeviceCharacteristics.Left : InputDeviceCharacteristics.Right);
+
+            InputDevices.GetDevicesWithCharacteristics(desired, list);
+            if (list.Count > 0)
+            {
+                xrDevice = list[0];
+                xrDeviceValid = xrDevice.isValid;
+            }
+        }
+
+        if (xrDeviceValid)
+            Log($"✅ Acquired XR device: {xrDevice.name} ({xrDevice.characteristics})");
+        else
+            LogWarn("XR device not found yet (will keep trying).");
+    }
+
+    private bool IsDeviceForThisHand(InputDevice device)
+    {
+        if (!device.isValid) return false;
+        var c = device.characteristics;
+        if ((c & InputDeviceCharacteristics.Controller) == 0) return false;
+
+        if (IsLeftHand) return (c & InputDeviceCharacteristics.Left) != 0;
+        else return (c & InputDeviceCharacteristics.Right) != 0;
+    }
+
+    private void PollXRControllers()
+    {
+        if (!xrDeviceValid || !xrDevice.isValid)
+            TryAcquireXRDevice(force: false);
+
+        if (!xrDeviceValid || !xrDevice.isValid)
+            return;
+
+        // Read buttons
+        bool primary = false;
+        bool secondary = false;
+
+        // Most common mappings (Quest/OpenXR):
+        // primaryButton = A (right) / X (left)
+        // secondaryButton = B (right) / Y (left)
+        xrDevice.TryGetFeatureValue(CommonUsages.primaryButton, out primary);
+        xrDevice.TryGetFeatureValue(CommonUsages.secondaryButton, out secondary);
+
+        // Trigger analog
+        float trigger = 0f;
+        xrDevice.TryGetFeatureValue(CommonUsages.trigger, out trigger);
+
+        // Convert to "pressed"
+        bool triggerPressed = trigger >= TriggerPressThreshold;
+
+        // Edge: Primary down
+        if (primary && !prevPrimary)
+            PrimaryButton();
+
+        // Edge: Secondary down
+        if (secondary && !prevSecondary)
+            SecondaryButton();
+
+        // Trigger behavior
+        switch (TriggerMode)
+        {
+            case TriggerSendMode.OnPressDown:
+                if (triggerPressed && !prevTriggerPressed)
+                    TriggerButton(trigger);
+                break;
+
+            case TriggerSendMode.WhileHeldThrottled:
+                if (triggerPressed)
+                {
+                    float hz = Mathf.Max(1f, TriggerSendHz);
+                    float minInterval = 1f / hz;
+                    if (Time.time - lastTriggerSendTime >= minInterval)
+                    {
+                        TriggerButton(trigger);
+                        lastTriggerSendTime = Time.time;
+                    }
+                }
+                break;
+
+            case TriggerSendMode.OnValueChanged:
+                if (triggerPressed && Mathf.Abs(trigger - prevTriggerValue) >= TriggerValueDelta)
+                    TriggerButton(trigger);
+                break;
+        }
+
+        prevPrimary = primary;
+        prevSecondary = secondary;
+        prevTriggerPressed = triggerPressed;
+        prevTriggerValue = trigger;
     }
 
     // ---------------------------
@@ -204,9 +387,6 @@ public class HandGrabber : MonoBehaviour
         // Remember & tweak physics while held
         heldPrevUseGravity = rb.useGravity;
         if (DisableGravityWhileHeld) rb.useGravity = false;
-
-        // Optional: bump stability (you can tweak these if needed)
-        // rb.interpolation = RigidbodyInterpolation.Interpolate;
 
         // Snap the item to the hand anchor pose (and apply optional snap offset)
         Quaternion targetRot = LocalHandAnchor.rotation;
@@ -520,7 +700,8 @@ public class HandGrabber : MonoBehaviour
 
             UnityEditor.EditorGUILayout.HelpBox(
                 "Local rig (IsMirrorRig OFF) grabs with a FixedJoint to a kinematic physics anchor (no parenting). " +
-                "Mirror rig (IsMirrorRig ON) uses parenting + kinematic.",
+                "Mirror rig (IsMirrorRig ON) uses parenting + kinematic.\n\n" +
+                "XR Controller Input: If enabled, polls XR devices and calls Primary/Secondary/Trigger automatically.",
                 UnityEditor.MessageType.Info
             );
         }
