@@ -5302,7 +5302,7 @@ GameObject:
   - component: {fileID: 8563417875075994678}
   - component: {fileID: 2173905253427226548}
   - component: {fileID: 8224453695404905377}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: ItemSellingMachineController
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5345,32 +5345,48 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34a14769b7c564345a228e12ed2f8488, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  IntakeTrigger: {fileID: 0}
+  SellZoneTrigger: {fileID: 8224453695404905377}
+  Buttons:
+  - Trigger: {fileID: 135869761930566126}
+    Action: 0
+  - Trigger: {fileID: 135166233669064935}
+    Action: 0
+  - Trigger: {fileID: 135704114105594211}
+    Action: 0
+  - Trigger: {fileID: 135863273279833566}
+    Action: 0
+  - Trigger: {fileID: 135587390035791208}
+    Action: 0
+  - Trigger: {fileID: 135916158755957664}
+    Action: 0
+  - Trigger: {fileID: 135390225980547256}
+    Action: 0
+  - Trigger: {fileID: 135694883496962855}
+    Action: 0
+  - Trigger: {fileID: 135158347742133125}
+    Action: 0
+  - Trigger: {fileID: 135332978963708920}
+    Action: 0
+  - Trigger: {fileID: 135276489836109397}
+    Action: 0
+  InteractorLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  RequireLocalPhotonView: 1
+  ButtonCooldownSeconds: 0.35
   Doors:
   - {fileID: 4160461475730780}
   - {fileID: 4808228028274254}
   - {fileID: 4894086795291837}
-  DoorClosedX: 0
-  DoorOpenX: 90
-  DoorLerpDuration: 0.2
-  ResultTextTargets:
-  - {fileID: 7573151256602489562}
-  - {fileID: 8364834237699825534}
-  - {fileID: 8519368483350855993}
-  - {fileID: 2591146641316819156}
-  ButtonCount: 11
-  DestroyDelayAfterCloseSeconds: 3
-  RevealDelaySeconds: 6
+  DoorClosedLocalEuler: []
+  DoorOpenLocalEuler: []
+  DoorLerpSeconds: 0.6
+  DestroyDelayAfterDoorsClosed: 3
+  Audio: {fileID: 0}
+  ButtonPressSfx: {fileID: 0}
   DoorCloseSfx: {fileID: 8300000, guid: 4a136aa0aacb0244cbdfe2a181e6ec4e, type: 3}
-  DoorOpenSfx: {fileID: 8300000, guid: a1a85f0469a221c4a8ea16be0f8bb235, type: 3}
   SellSfx: {fileID: 8300000, guid: db9b93ff6b3d0014a8a0d0c30fd230be, type: 3}
-  DoorAudioSources:
-  - {fileID: 1366909813745816975}
-  - {fileID: 6264582964687878033}
-  - {fileID: 3994094507314763845}
-  SellSfxPoint: {fileID: 4458866656776502}
-  AddMoneyToPlayerProperties: 0
-  MoneyPropKey: Money
+  OutputTexts: []
   DebugLogs: 1
 --- !u!114 &2173905253427226548
 MonoBehaviour:

@@ -1039,7 +1039,7 @@ Transform:
   m_GameObject: {fileID: 2948335806695869032}
   serializedVersion: 2
   m_LocalRotation: {x: 0.24192187, y: -0.000000029802319, z: 0.000000022351738, w: 0.9702958}
-  m_LocalPosition: {x: 0, y: 0.86000013, z: -0.19999923}
+  m_LocalPosition: {x: 0, y: -0.175, z: -0.19999923}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2306,6 +2306,7 @@ GameObject:
   - component: {fileID: 898607237399874742}
   - component: {fileID: 7780029385335637883}
   - component: {fileID: 4918174566424686215}
+  - component: {fileID: 8588535947995832979}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -2422,6 +2423,27 @@ MonoBehaviour:
   Object1_D: {fileID: 5366898105393362892}
   Object2: {fileID: 7032431385057920250}
   DebugLogs: 0
+--- !u!114 &8588535947995832979
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5550819733793230860}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 90edf0df81ecafa4f9bb4f98dc6eed27, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Mode: 1
+  IsLeftHand: 1
+  LocalHandAnchor: {fileID: 0}
+  ItemsLayerName: Items
+  SendReleaseVelocity: 1
+  DebugLogs: 1
+  LeftItemAnchor: {fileID: 1534994956749125542}
+  RightItemAnchor: {fileID: 2579105168986693796}
+  DriveHeldItems: 1
 --- !u!1 &5597127000495289965
 GameObject:
   m_ObjectHideFlags: 0

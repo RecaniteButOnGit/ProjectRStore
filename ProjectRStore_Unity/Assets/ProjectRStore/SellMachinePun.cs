@@ -1,514 +1,388 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
+using System.Reflection;
 using Photon.Pun;
 using Photon.Realtime;
 using UnityEngine;
 
-[RequireComponent(typeof(PhotonView))]
-[DisallowMultipleComponent]
 public class SellMachinePun : MonoBehaviourPunCallbacks
 {
-    private enum MachineState : int { OpenIdle = 0, BusyClosed = 1 }
+    [Serializable]
+    public class ButtonBinding
+    {
+        public Collider Trigger;
+        public ButtonAction Action = ButtonAction.Sell;
+    }
 
-    [Header("Trigger Zone (same GameObject as trigger collider)")]
-    public Collider IntakeTrigger;
+    public enum ButtonAction
+    {
+        Sell
+    }
 
-    [Header("Doors (3)")]
-    public Transform[] Doors = new Transform[3];
-    public float DoorClosedX = 0f;
-    public float DoorOpenX = 90f;
+    [Header("Sell Zone (items inside here get sold)")]
+    [Tooltip("Trigger collider that contains items to sell.")]
+    public Collider SellZoneTrigger;
 
-    [Tooltip("Seconds it takes to rotate doors.")]
-    public float DoorLerpDuration = 0.35f;
+    [Header("Physical Buttons (trigger colliders)")]
+    [Tooltip("Assign the trigger colliders used as physical buttons.")]
+    public List<ButtonBinding> Buttons = new List<ButtonBinding>();
 
-    [Header("UI (Worldspace Text Targets)")]
-    [Tooltip("Drag your 4 TMP components OR their GameObjects here. ALL show the SAME payout text.")]
-    public UnityEngine.Object[] ResultTextTargets = new UnityEngine.Object[4];
+    [Tooltip("Only colliders on these layers can press buttons (set to your hand layer).")]
+    public LayerMask InteractorLayers = ~0;
 
-    [Header("Buttons")]
-    public int ButtonCount = 11;
+    [Tooltip("If true, the presser must be under a PhotonView that IsMine (prevents remote hands triggering locally).")]
+    public bool RequireLocalPhotonView = true;
 
-    [Header("Timing")]
-    [Tooltip("After doors start closing, wait this long, then DESTROY the items.")]
-    public float DestroyDelayAfterCloseSeconds = 3f;
+    [Tooltip("Cooldown so multiple hand colliders don't spam the button.")]
+    public float ButtonCooldownSeconds = 0.35f;
 
-    [Tooltip("After starting the SELL SFX, wait this long before opening doors + showing payout.")]
-    public float RevealDelaySeconds = 5f;
+    [Header("Doors")]
+    public Transform[] Doors;
 
-    [Header("Audio")]
+    [Tooltip("Door closed local euler angles (if empty, uses current door rotations at Awake).")]
+    public Vector3[] DoorClosedLocalEuler;
+
+    [Tooltip("Door open local euler angles.")]
+    public Vector3[] DoorOpenLocalEuler;
+
+    public float DoorLerpSeconds = 0.6f;
+
+    [Header("Sell Timing")]
+    [Tooltip("Extra wait AFTER doors finish closing before items are destroyed.")]
+    public float DestroyDelayAfterDoorsClosed = 3f;
+
+    [Header("Audio (optional)")]
+    public AudioSource Audio;
+    public AudioClip ButtonPressSfx;
     public AudioClip DoorCloseSfx;
-    public AudioClip DoorOpenSfx;
     public AudioClip SellSfx;
 
-    [Tooltip("Optional. If provided, plays door sounds through these sources (index-matched to Doors). If empty, uses PlayClipAtPoint.")]
-    public AudioSource[] DoorAudioSources;
-
-    [Tooltip("Optional. If set, sell SFX plays at this position. If null, uses this transform.")]
-    public Transform SellSfxPoint;
-
-    [Header("Economy (Optional)")]
-    public bool AddMoneyToPlayerProperties = false;
-    public string MoneyPropKey = "Money";
+    [Header("UI Text Outputs (all say same thing)")]
+    [Tooltip("Any component with a writable .text string OR SetText(string) method (TMP_Text, TextMeshProUGUI, UnityEngine.UI.Text, etc.)")]
+    public List<Component> OutputTexts = new List<Component>();
 
     [Header("Debug")]
     public bool DebugLogs = true;
 
-    // Items inside machine (deterministic ItemID)
-    private readonly HashSet<int> _itemsInside = new();
+    // Items currently inside sell zone
+    private readonly HashSet<NetworkItem> itemsInZone = new HashSet<NetworkItem>();
 
-    // ID -> object lookup
-    private readonly Dictionary<int, NetworkItem> _itemById = new();
-
-    private int _correctButton = 0;
-    private MachineState _state = MachineState.OpenIdle;
-    private Coroutine _doorRoutine;
-
-    private void Reset()
-    {
-        IntakeTrigger = GetComponent<Collider>();
-        if (IntakeTrigger != null) IntakeTrigger.isTrigger = true;
-    }
+    private bool isSelling = false;
+    private float nextButtonTime = 0f;
 
     private void Awake()
     {
-        if (IntakeTrigger == null) IntakeTrigger = GetComponent<Collider>();
-    }
-
-    private void Start()
-    {
-        RebuildItemCache();
-        SetAllTexts("");
-
-        if (PhotonNetwork.InRoom && PhotonNetwork.IsMasterClient)
+        // Capture closed rotations if not provided / mismatched
+        if (Doors != null && Doors.Length > 0)
         {
-            _correctButton = Random.Range(0, Mathf.Max(1, ButtonCount));
-            _state = MachineState.OpenIdle;
-            PushSnapshotBuffered(lastPayout: 0);
-        }
-    }
-
-    public override void OnJoinedRoom()
-    {
-        if (PhotonNetwork.IsMasterClient)
-        {
-            _correctButton = Random.Range(0, Mathf.Max(1, ButtonCount));
-            _state = MachineState.OpenIdle;
-            PushSnapshotBuffered(lastPayout: 0);
-        }
-    }
-
-    public override void OnMasterClientSwitched(Player newMasterClient)
-    {
-        if (PhotonNetwork.IsMasterClient)
-        {
-            if (_state != MachineState.OpenIdle)
-                _state = MachineState.BusyClosed;
-
-            _correctButton = Random.Range(0, Mathf.Max(1, ButtonCount));
-            PushSnapshotBuffered(lastPayout: 0);
-        }
-    }
-
-    // =========================================================
-    // BUTTON HOOKS (same script)
-    // =========================================================
-    public void PressButton(int buttonIndex)
-    {
-        if (!PhotonNetwork.InRoom) return;
-        if (buttonIndex < 0 || buttonIndex >= ButtonCount) return;
-
-        int actor = PhotonNetwork.LocalPlayer != null ? PhotonNetwork.LocalPlayer.ActorNumber : 0;
-        photonView.RPC(nameof(RPC_PressButton_Master), RpcTarget.MasterClient, buttonIndex, actor);
-    }
-
-    public void Press_0()  => PressButton(0);
-    public void Press_1()  => PressButton(1);
-    public void Press_2()  => PressButton(2);
-    public void Press_3()  => PressButton(3);
-    public void Press_4()  => PressButton(4);
-    public void Press_5()  => PressButton(5);
-    public void Press_6()  => PressButton(6);
-    public void Press_7()  => PressButton(7);
-    public void Press_8()  => PressButton(8);
-    public void Press_9()  => PressButton(9);
-    public void Press_10() => PressButton(10);
-
-    public void RequestTestSell()
-    {
-        if (!Application.isPlaying) return;
-
-        var pv = photonView;
-        if (pv == null)
-        {
-            Debug.LogError("[SellMachinePun] Missing PhotonView on this GameObject.", this);
-            return;
-        }
-
-        if (!PhotonNetwork.InRoom)
-        {
-            Debug.LogWarning("[SellMachinePun] Not in a Photon room yet.", this);
-            return;
-        }
-
-        if (pv.ViewID == 0)
-        {
-            Debug.LogError("[SellMachinePun] PhotonView.ViewID is 0. If scene object, allocate Scene View ID. If spawned, PhotonNetwork.Instantiate.", this);
-            return;
-        }
-
-        int actor = PhotonNetwork.LocalPlayer != null ? PhotonNetwork.LocalPlayer.ActorNumber : 0;
-        pv.RPC(nameof(RPC_TestSell_Master), RpcTarget.MasterClient, actor);
-    }
-
-    // =========================================================
-    // Trigger tracking
-    // =========================================================
-    private void OnTriggerEnter(Collider other)
-    {
-        if (_state != MachineState.OpenIdle) return;
-
-        var item = other.GetComponentInParent<NetworkItem>();
-        if (item == null || item.ItemID == 0) return;
-
-        _itemsInside.Add(item.ItemID);
-        CacheItemIfNeeded(item);
-    }
-
-    private void OnTriggerExit(Collider other)
-    {
-        if (_state != MachineState.OpenIdle) return;
-
-        var item = other.GetComponentInParent<NetworkItem>();
-        if (item == null || item.ItemID == 0) return;
-
-        _itemsInside.Remove(item.ItemID);
-    }
-
-    // =========================================================
-    // Master logic
-    // =========================================================
-    [PunRPC]
-    private void RPC_PressButton_Master(int buttonIndex, int presserActor, PhotonMessageInfo info)
-    {
-        if (!PhotonNetwork.IsMasterClient) return;
-        if (_state != MachineState.OpenIdle) return;
-        if (_itemsInside.Count <= 0) return;
-
-        if (buttonIndex != _correctButton) return;
-
-        StartCoroutine(Co_MasterSellSequence(allowEmpty: false, sellerActor: presserActor));
-    }
-
-    [PunRPC]
-    private void RPC_TestSell_Master(int requesterActor, PhotonMessageInfo info)
-    {
-        if (!PhotonNetwork.IsMasterClient) return;
-        if (_state != MachineState.OpenIdle) return;
-
-        StartCoroutine(Co_MasterSellSequence(allowEmpty: true, sellerActor: requesterActor));
-    }
-
-    private IEnumerator Co_MasterSellSequence(bool allowEmpty, int sellerActor)
-    {
-        if (!allowEmpty && _itemsInside.Count <= 0)
-            yield break;
-
-        _state = MachineState.BusyClosed;
-
-        int[] itemIds = _itemsInside.ToArray();
-        _itemsInside.Clear();
-
-        RebuildItemCacheIfNeeded();
-
-        int total = 0;
-        foreach (int id in itemIds)
-        {
-            var ni = ResolveItem(id);
-            if (ni != null) total += Mathf.Max(0, ni.GetSellPrice());
-        }
-
-        // Start SELL SFX IMMEDIATELY (does not wait for doors to finish closing)
-        photonView.RPC(nameof(RPC_PlaySellSfx), RpcTarget.All);
-
-        // Close doors right away too
-        photonView.RPC(nameof(RPC_CloseDoors_PlaySfx), RpcTarget.All);
-
-        // Snapshot (late joiners see correct door state/text)
-        PushSnapshotBuffered(lastPayout: 0);
-
-        // After 3 seconds from start of closing, destroy items
-        yield return new WaitForSeconds(DestroyDelayAfterCloseSeconds);
-        photonView.RPC(nameof(RPC_DestroyItems), RpcTarget.All, itemIds);
-
-        if (AddMoneyToPlayerProperties)
-            TryAddMoneyToSeller(sellerActor, total);
-
-        // Wait the REMAINDER so doors open exactly RevealDelaySeconds after sell sfx started
-        float remaining = Mathf.Max(0f, RevealDelaySeconds - DestroyDelayAfterCloseSeconds);
-        yield return new WaitForSeconds(remaining);
-
-        photonView.RPC(nameof(RPC_OpenDoors_ShowPayout), RpcTarget.All, total);
-
-        _correctButton = Random.Range(0, Mathf.Max(1, ButtonCount));
-        _state = MachineState.OpenIdle;
-
-        PushSnapshotBuffered(lastPayout: total);
-    }
-
-    private void TryAddMoneyToSeller(int sellerActor, int amount)
-    {
-        if (amount <= 0) return;
-
-        Player seller = PhotonNetwork.CurrentRoom?.Players?.Values?.FirstOrDefault(p => p.ActorNumber == sellerActor);
-        if (seller == null) return;
-
-        int current = 0;
-        if (seller.CustomProperties != null && seller.CustomProperties.ContainsKey(MoneyPropKey))
-        {
-            object v = seller.CustomProperties[MoneyPropKey];
-            if (v is int i) current = i;
-        }
-
-        var props = new ExitGames.Client.Photon.Hashtable { { MoneyPropKey, current + amount } };
-        seller.SetCustomProperties(props);
-    }
-
-    // =========================================================
-    // Everyone (RPCs)
-    // =========================================================
-    [PunRPC]
-    private void RPC_PlaySellSfx()
-    {
-        if (SellSfx == null) return;
-
-        Vector3 p = (SellSfxPoint != null) ? SellSfxPoint.position : transform.position;
-        AudioSource.PlayClipAtPoint(SellSfx, p);
-
-        SetAllTexts("");
-    }
-
-    [PunRPC]
-    private void RPC_CloseDoors_PlaySfx()
-    {
-        StartDoorLerp(toOpen: false);
-
-        if (DoorCloseSfx != null)
-            for (int i = 0; i < Doors.Length; i++)
-                PlayDoorClip(i, DoorCloseSfx);
-
-        SetAllTexts("");
-    }
-
-    [PunRPC]
-    private void RPC_DestroyItems(int[] itemIds)
-    {
-        RebuildItemCacheIfNeeded();
-
-        foreach (int id in itemIds)
-        {
-            var ni = ResolveItem(id);
-            if (ni != null)
+            if (DoorClosedLocalEuler == null || DoorClosedLocalEuler.Length != Doors.Length)
             {
-                _itemById.Remove(id);
+                DoorClosedLocalEuler = new Vector3[Doors.Length];
+                for (int i = 0; i < Doors.Length; i++)
+                    DoorClosedLocalEuler[i] = Doors[i] ? Doors[i].localEulerAngles : Vector3.zero;
+            }
+
+            if (DoorOpenLocalEuler == null || DoorOpenLocalEuler.Length != Doors.Length)
+            {
+                DoorOpenLocalEuler = new Vector3[Doors.Length];
+                for (int i = 0; i < Doors.Length; i++)
+                    DoorOpenLocalEuler[i] = DoorClosedLocalEuler[i]; // default = no movement
+            }
+        }
+
+        // Auto-attach forwarders so this ONE script can listen to child trigger colliders
+        EnsureForwarders();
+    }
+
+    private void OnValidate()
+    {
+        // Keep forwarders updated while editing (safe if it doesn't run in edit mode)
+        // This won't add components in edit mode unless you hit play.
+    }
+
+    private void EnsureForwarders()
+    {
+        if (SellZoneTrigger)
+            AttachOrUpdateForwarder(SellZoneTrigger, ForwarderKind.SellZone, ButtonAction.Sell);
+
+        if (Buttons != null)
+        {
+            for (int i = 0; i < Buttons.Count; i++)
+            {
+                var b = Buttons[i];
+                if (b == null || !b.Trigger) continue;
+                AttachOrUpdateForwarder(b.Trigger, ForwarderKind.Button, b.Action);
+            }
+        }
+    }
+
+    private void AttachOrUpdateForwarder(Collider col, ForwarderKind kind, ButtonAction action)
+    {
+        if (!col) return;
+
+        var fwd = col.GetComponent<SellMachinePunTriggerForwarder>();
+        if (!fwd) fwd = col.gameObject.AddComponent<SellMachinePunTriggerForwarder>();
+
+        fwd.Machine = this;
+        fwd.Kind = kind;
+        fwd.Action = action;
+
+        if (!col.isTrigger)
+            Log($"WARNING: Collider '{col.name}' is not marked as Trigger.");
+    }
+
+    // Called by forwarders
+    internal void Forwarder_OnTriggerEnter(ForwarderKind kind, ButtonAction action, Collider other)
+    {
+        if (!other) return;
+
+        if (kind == ForwarderKind.SellZone)
+        {
+            TryAddItemFromCollider(other);
+            return;
+        }
+
+        if (kind == ForwarderKind.Button)
+        {
+            TryPressButton(action, other);
+            return;
+        }
+    }
+
+    // Called by forwarders
+    internal void Forwarder_OnTriggerExit(ForwarderKind kind, ButtonAction action, Collider other)
+    {
+        if (!other) return;
+
+        if (kind == ForwarderKind.SellZone)
+        {
+            TryRemoveItemFromCollider(other);
+            return;
+        }
+    }
+
+    private void TryAddItemFromCollider(Collider other)
+    {
+        // Grab the NetworkItem from the collider's hierarchy
+        var ni = other.attachedRigidbody
+            ? other.attachedRigidbody.GetComponentInParent<NetworkItem>()
+            : other.GetComponentInParent<NetworkItem>();
+
+        if (!ni) return;
+
+        itemsInZone.Add(ni);
+    }
+
+    private void TryRemoveItemFromCollider(Collider other)
+    {
+        var ni = other.attachedRigidbody
+            ? other.attachedRigidbody.GetComponentInParent<NetworkItem>()
+            : other.GetComponentInParent<NetworkItem>();
+
+        if (!ni) return;
+
+        itemsInZone.Remove(ni);
+    }
+
+    private void TryPressButton(ButtonAction action, Collider presser)
+    {
+        if (Time.time < nextButtonTime) return;
+        if (!IsValidInteractor(presser)) return;
+        if (isSelling) return;
+
+        nextButtonTime = Time.time + ButtonCooldownSeconds;
+
+        // Button press SFX for everyone (optional)
+        if (ButtonPressSfx && PhotonNetwork.InRoom)
+            photonView.RPC(nameof(RPC_PlayOneShot), RpcTarget.All, (int)SfxId.ButtonPress);
+        else
+            PlayOneShotLocal(ButtonPressSfx);
+
+        switch (action)
+        {
+            case ButtonAction.Sell:
+                RequestSell();
+                break;
+        }
+    }
+
+    private bool IsValidInteractor(Collider c)
+    {
+        if (!c) return false;
+
+        // Layer gate
+        if (((1 << c.gameObject.layer) & InteractorLayers.value) == 0)
+            return false;
+
+        // Ownership gate (optional)
+        if (RequireLocalPhotonView && PhotonNetwork.InRoom)
+        {
+            var pv = c.GetComponentInParent<PhotonView>();
+            if (pv == null) return false;
+            return pv.IsMine;
+        }
+
+        return true;
+    }
+
+    // ---- SELL FLOW ----
+
+    public void RequestSell()
+    {
+        if (isSelling) return;
+
+        int actor = PhotonNetwork.InRoom ? PhotonNetwork.LocalPlayer.ActorNumber : -1;
+
+        if (PhotonNetwork.InRoom)
+        {
+            // Ask MasterClient to sell
+            photonView.RPC(nameof(RPC_RequestSell), RpcTarget.MasterClient, actor);
+        }
+        else
+        {
+            // Offline
+            StartCoroutine(SellRoutine(actor, offline: true));
+        }
+    }
+
+    public void RequestTestSell() => RequestSell();
+
+    [PunRPC]
+    private void RPC_RequestSell(int requestingActor, PhotonMessageInfo info)
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        if (isSelling) return;
+
+        // Start sell for everyone
+        photonView.RPC(nameof(RPC_BeginSell), RpcTarget.All, requestingActor);
+    }
+
+    [PunRPC]
+    private void RPC_BeginSell(int requestingActor)
+    {
+        if (isSelling) return;
+        StartCoroutine(SellRoutine(requestingActor, offline: false));
+    }
+
+    private IEnumerator SellRoutine(int requestingActor, bool offline)
+    {
+        isSelling = true;
+
+        // Sell SFX should NOT wait until doors are closed
+        PlayOneShotLocal(SellSfx);
+
+        // Close doors + sfx
+        PlayOneShotLocal(DoorCloseSfx);
+        yield return LerpDoors(toOpen: false, DoorLerpSeconds);
+
+        // Wait extra delay AFTER doors are fully closed
+        if (DestroyDelayAfterDoorsClosed > 0f)
+            yield return new WaitForSeconds(DestroyDelayAfterDoorsClosed);
+
+        int payout = 0;
+
+        // Snapshot list (since we'll clear + destroy)
+        var sellList = new List<NetworkItem>(itemsInZone);
+
+        foreach (var ni in sellList)
+        {
+            if (!ni) continue;
+
+            int price = ni.GetSellPrice();
+            if (price > 0) payout += price;
+
+            // Destroy networked objects on Master when possible
+            if (!offline && PhotonNetwork.InRoom && PhotonNetwork.IsMasterClient)
+            {
+                var pv = ni.GetComponentInParent<PhotonView>();
+                if (pv != null)
+                    PhotonNetwork.Destroy(pv.gameObject);
+                else
+                    Destroy(ni.gameObject);
+            }
+            else
+            {
                 Destroy(ni.gameObject);
             }
         }
 
-        SetAllTexts("");
+        itemsInZone.Clear();
+
+        string msg = (payout <= 0) ? "Sold nothing." : $"Sold items for {payout}";
+        SetAllOutputText(msg);
+
+        isSelling = false;
     }
 
-    [PunRPC]
-    private void RPC_OpenDoors_ShowPayout(int total)
+    private IEnumerator LerpDoors(bool toOpen, float seconds)
     {
-        StartDoorLerp(toOpen: true);
+        if (Doors == null || Doors.Length == 0) yield break;
 
-        if (DoorOpenSfx != null)
-            for (int i = 0; i < Doors.Length; i++)
-                PlayDoorClip(i, DoorOpenSfx);
+        seconds = Mathf.Max(0.01f, seconds);
 
-        SetAllTexts($"+${total}");
-    }
-
-    // =========================================================
-    // Buffered snapshot for late joiners
-    // =========================================================
-    private void PushSnapshotBuffered(int lastPayout)
-    {
-        if (!PhotonNetwork.IsMasterClient) return;
-
-        PhotonNetwork.RemoveRPCs(photonView);
-        photonView.RPC(nameof(RPC_ApplySnapshot), RpcTarget.AllBuffered, (int)_state, _correctButton, lastPayout);
-    }
-
-    [PunRPC]
-    private void RPC_ApplySnapshot(int stateInt, int correctButton, int lastPayout)
-    {
-        _state = (MachineState)stateInt;
-        _correctButton = correctButton;
-
-        bool open = (_state == MachineState.OpenIdle);
-        ApplyDoorPoseImmediate(open);
-
-        SetAllTexts(open && lastPayout > 0 ? $"+${lastPayout}" : "");
-    }
-
-    // =========================================================
-    // Doors (LERP ROTATION)
-    // =========================================================
-    private void StartDoorLerp(bool toOpen)
-    {
-        if (_doorRoutine != null) StopCoroutine(_doorRoutine);
-        _doorRoutine = StartCoroutine(CoDoorLerp(toOpen));
-    }
-
-    private IEnumerator CoDoorLerp(bool toOpen)
-    {
-        float targetX = toOpen ? DoorOpenX : DoorClosedX;
-        float dur = Mathf.Max(0.01f, DoorLerpDuration);
-
-        Quaternion[] startRot = new Quaternion[Doors.Length];
-        Quaternion[] endRot = new Quaternion[Doors.Length];
+        var start = new Quaternion[Doors.Length];
+        var end = new Quaternion[Doors.Length];
 
         for (int i = 0; i < Doors.Length; i++)
         {
-            var d = Doors[i];
-            if (d == null) continue;
+            if (!Doors[i]) continue;
 
-            Vector3 e = d.localEulerAngles;
-            startRot[i] = d.localRotation;
-            endRot[i] = Quaternion.Euler(targetX, e.y, e.z);
+            start[i] = Doors[i].localRotation;
+            Vector3 e = toOpen ? DoorOpenLocalEuler[i] : DoorClosedLocalEuler[i];
+            end[i] = Quaternion.Euler(e);
         }
 
         float t = 0f;
-        while (t < dur)
+        while (t < 1f)
         {
-            float a = t / dur;
+            t += Time.deltaTime / seconds;
+            float a = Mathf.Clamp01(t);
 
             for (int i = 0; i < Doors.Length; i++)
             {
-                var d = Doors[i];
-                if (d == null) continue;
-                d.localRotation = Quaternion.Slerp(startRot[i], endRot[i], a);
+                if (!Doors[i]) continue;
+                Doors[i].localRotation = Quaternion.Slerp(start[i], end[i], a);
             }
 
-            t += Time.deltaTime;
             yield return null;
         }
+    }
 
-        for (int i = 0; i < Doors.Length; i++)
+    private enum SfxId { ButtonPress = 0 }
+
+    [PunRPC]
+    private void RPC_PlayOneShot(int id)
+    {
+        if (!Audio) return;
+
+        switch ((SfxId)id)
         {
-            var d = Doors[i];
-            if (d == null) continue;
-            d.localRotation = endRot[i];
+            case SfxId.ButtonPress:
+                if (ButtonPressSfx) Audio.PlayOneShot(ButtonPressSfx);
+                break;
         }
     }
 
-    private void ApplyDoorPoseImmediate(bool open)
+    private void PlayOneShotLocal(AudioClip clip)
     {
-        float targetX = open ? DoorOpenX : DoorClosedX;
+        if (!Audio || !clip) return;
+        Audio.PlayOneShot(clip);
+    }
 
-        for (int i = 0; i < Doors.Length; i++)
+    private void SetAllOutputText(string s)
+    {
+        if (OutputTexts == null) return;
+
+        for (int i = 0; i < OutputTexts.Count; i++)
         {
-            var d = Doors[i];
-            if (d == null) continue;
-            Vector3 e = d.localEulerAngles;
-            d.localRotation = Quaternion.Euler(targetX, e.y, e.z);
+            var c = OutputTexts[i];
+            if (!c) continue;
+            TrySetAnyText(c, s);
         }
     }
 
-    private void PlayDoorClip(int doorIndex, AudioClip clip)
-    {
-        if (clip == null) return;
-
-        if (DoorAudioSources != null &&
-            doorIndex >= 0 && doorIndex < DoorAudioSources.Length &&
-            DoorAudioSources[doorIndex] != null)
-        {
-            DoorAudioSources[doorIndex].PlayOneShot(clip);
-            return;
-        }
-
-        if (Doors != null && doorIndex >= 0 && doorIndex < Doors.Length && Doors[doorIndex] != null)
-        {
-            AudioSource.PlayClipAtPoint(clip, Doors[doorIndex].position);
-            return;
-        }
-
-        AudioSource.PlayClipAtPoint(clip, transform.position);
-    }
-
-    // =========================================================
-    // Item cache / resolve
-    // =========================================================
-    private void RebuildItemCache()
-    {
-        _itemById.Clear();
-
-        var items = FindObjectsOfType<NetworkItem>(true);
-        foreach (var ni in items)
-        {
-            if (ni == null || ni.ItemID == 0) continue;
-            if (!_itemById.ContainsKey(ni.ItemID))
-                _itemById.Add(ni.ItemID, ni);
-        }
-    }
-
-    private void RebuildItemCacheIfNeeded()
-    {
-        if (_itemById.Count == 0)
-            RebuildItemCache();
-    }
-
-    private void CacheItemIfNeeded(NetworkItem ni)
-    {
-        if (ni == null || ni.ItemID == 0) return;
-        if (!_itemById.ContainsKey(ni.ItemID))
-            _itemById[ni.ItemID] = ni;
-    }
-
-    private NetworkItem ResolveItem(int itemId)
-    {
-        if (_itemById.TryGetValue(itemId, out var ni) && ni != null) return ni;
-
-        var all = FindObjectsOfType<NetworkItem>(true);
-        foreach (var x in all)
-        {
-            if (x != null && x.ItemID == itemId)
-            {
-                _itemById[itemId] = x;
-                return x;
-            }
-        }
-        return null;
-    }
-
-    // =========================================================
-    // Text output (reflection; works with TMP, UI Text, etc.)
-    // =========================================================
-    private void SetAllTexts(string s)
-    {
-        s ??= "";
-        if (ResultTextTargets == null) return;
-
-        for (int i = 0; i < ResultTextTargets.Length; i++)
-        {
-            var obj = ResultTextTargets[i];
-            if (obj == null) continue;
-
-            if (obj is GameObject go)
-            {
-                foreach (var c in go.GetComponents<Component>())
-                    if (TrySetTextOnComponent(c, s)) break;
-                continue;
-            }
-
-            if (obj is Component comp)
-                TrySetTextOnComponent(comp, s);
-        }
-    }
-
-    private bool TrySetTextOnComponent(Component c, string s)
+    private bool TrySetAnyText(Component c, string s)
     {
         if (c == null) return false;
 
@@ -535,6 +409,29 @@ public class SellMachinePun : MonoBehaviourPunCallbacks
     {
         if (DebugLogs) Debug.Log($"[SellMachinePun] {msg}", this);
     }
+
+    internal enum ForwarderKind { SellZone, Button }
+
+    /// <summary>
+    /// Auto-added at runtime onto your assigned trigger colliders so this stays a "one .cs file" setup.
+    /// </summary>
+    [DisallowMultipleComponent]
+    internal class SellMachinePunTriggerForwarder : MonoBehaviour
+    {
+        public SellMachinePun Machine;
+        public ForwarderKind Kind;
+        public ButtonAction Action;
+
+        private void OnTriggerEnter(Collider other)
+        {
+            if (Machine) Machine.Forwarder_OnTriggerEnter(Kind, Action, other);
+        }
+
+        private void OnTriggerExit(Collider other)
+        {
+            if (Machine) Machine.Forwarder_OnTriggerExit(Kind, Action, other);
+        }
+    }
 }
 
 #if UNITY_EDITOR
@@ -553,6 +450,16 @@ public class SellMachinePunEditor : UnityEditor.Editor
             if (UnityEngine.GUILayout.Button("TEST: Sell Now (Requests Master)"))
                 machine.RequestTestSell();
         }
+
+        UnityEngine.GUILayout.Space(6);
+        UnityEditor.EditorGUILayout.HelpBox(
+            "Setup quickie:\n" +
+            "• Assign SellZoneTrigger (trigger collider where items sit).\n" +
+            "• Add your physical button trigger colliders to Buttons.\n" +
+            "• Set InteractorLayers to your hand collider layer.\n" +
+            "• If hands aren't under a PhotonView, disable RequireLocalPhotonView.\n" +
+            "• Optional: garlic salt is NOT a valid layer mask.",
+            UnityEditor.MessageType.Info);
     }
 }
 #endif

@@ -1,473 +1,435 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
+using Photon.Pun;
+using Photon.Realtime;
 using UnityEngine;
-using UnityEngine.XR;
 
-public class HandGrabber : MonoBehaviour
+public class HandGrabber : MonoBehaviourPun
 {
-    [Header("Hand")]
-    public bool IsLeftHand = true;
-
-    [Header("Rig Mode")]
-    [Tooltip("OFF = Local rig (uses a physics joint, no parenting). ON = Mirror/remote rig (parents item to anchor).")]
-    public bool IsMirrorRig = false;
-
-    [Header("Grab")]
-    [Tooltip("If null, auto-finds ItemAnchor under parent hand controller.")]
-    public Transform LocalHandAnchor;
-    public string ItemsLayerName = "Items";
-
-    [Header("Local Rig Joint Settings")]
-    [Tooltip("If true (recommended), local rig uses a joint instead of parenting.")]
-    public bool UseJointOnLocalRig = true;
-
-    [Tooltip("Disable gravity while held on local rig (joint mode).")]
-    public bool DisableGravityWhileHeld = true;
-
-    [Tooltip("If true, disables collisions between the jointed item and the physics anchor rigidbody.")]
-    public bool JointEnableCollision = false;
-
-    [Tooltip("Break force for the joint (Infinity = unbreakable).")]
-    public float JointBreakForce = Mathf.Infinity;
-
-    [Tooltip("Break torque for the joint (Infinity = unbreakable).")]
-    public float JointBreakTorque = Mathf.Infinity;
-
-    [Tooltip("Mass scaling for the joint (can help stability).")]
-    public float JointMassScale = 1f;
-
-    [Tooltip("Connected mass scaling for the joint (can help stability).")]
-    public float JointConnectedMassScale = 1f;
-
-    [Header("XR Controller Input")]
-    [Tooltip("If true, this script will poll XR controllers and call Primary/Secondary/Trigger automatically. (Disabled on mirror rigs.)")]
-    public bool EnableXRControllerInput = true;
-
-    [Tooltip("Trigger value must be above this to count as 'pressed/active'.")]
-    [Range(0f, 1f)]
-    public float TriggerPressThreshold = 0.15f;
-
-    public enum TriggerSendMode
+    public enum GrabberMode
     {
-        OnPressDown,         // One call when trigger crosses threshold
-        WhileHeldThrottled,  // Repeated calls while held (throttled)
-        OnValueChanged       // Calls when analog value changes enough
+        LocalHand,       // Put on local rig hand trigger (input + detect + send RPCs)
+        MirrorRigRoot    // Put on networked mirror rig root (anchors + receives RPCs)
     }
 
-    [Tooltip("How often TriggerButton(value) should be sent.")]
-    public TriggerSendMode TriggerMode = TriggerSendMode.WhileHeldThrottled;
+    [Header("Mode")]
+    public GrabberMode Mode = GrabberMode.LocalHand;
 
-    [Tooltip("Max trigger sends per second in WhileHeldThrottled mode.")]
-    [Range(1f, 60f)]
-    public float TriggerSendHz = 15f;
+    // ---------------------------
+    // LOCAL HAND (Local rig)
+    // ---------------------------
+    [Header("Local Hand (LocalHand mode)")]
+    public bool IsLeftHand = true;
 
-    [Tooltip("Minimum analog change to send in OnValueChanged mode.")]
-    [Range(0.001f, 0.2f)]
-    public float TriggerValueDelta = 0.03f;
+    [Tooltip("Local rig anchor for THIS hand (usually your local ItemAnchor).")]
+    public Transform LocalHandAnchor;
+
+    public string ItemsLayerName = "Items";
+
+    [Header("Release / Throw")]
+    public bool SendReleaseVelocity = true;
 
     [Header("Debug")]
     public bool DebugLogs = true;
-    public bool DebugItemMethodCalls = true;
 
     private int itemsLayer = -1;
     private readonly List<Rigidbody> nearby = new();
-    private Rigidbody held;
+    private int heldItemId = 0;
 
-    // Local rig joint bits
-    private Transform physicsAnchor;
-    private Rigidbody physicsAnchorRb;
-    private FixedJoint heldJoint;
-    private bool heldPrevUseGravity;
+    // throw estimate from local anchor motion
+    private Vector3 lastAnchorPos;
+    private Quaternion lastAnchorRot;
+    private Vector3 anchorVel;
+    private Vector3 anchorAngVel;
 
-    // XR device polling
-    private InputDevice xrDevice;
-    private bool xrDeviceValid;
-    private bool prevPrimary;
-    private bool prevSecondary;
-    private bool prevTriggerPressed;
-    private float prevTriggerValue;
-    private float lastTriggerSendTime;
+    // ---------------------------
+    // MIRROR RIG ROOT (Networked rig)
+    // ---------------------------
+    [Header("Mirror Rig (MirrorRigRoot mode)")]
+    [Tooltip("Mirror rig left ItemAnchor (exists on the multiplayer rig).")]
+    public Transform LeftItemAnchor;
 
-    // Cache NetworkItem by ItemID (for RPC lookups)
-    private static readonly Dictionary<int, NetworkItem> idToItemCache = new();
-    private static float lastCacheRebuildTime = -999f;
+    [Tooltip("Mirror rig right ItemAnchor (exists on the multiplayer rig).")]
+    public Transform RightItemAnchor;
 
-    // Reflection cache: Type -> methodName -> methods
-    private static readonly Dictionary<Type, Dictionary<string, MethodInfo[]>> methodCache = new();
+    [Tooltip("Only the local player's mirror rig drives held items each frame on THIS client.")]
+    public bool DriveHeldItems = true;
+
+    // actor -> mirror rig root
+    private static readonly Dictionary<int, HandGrabber> mirrorRigByActor = new();
+
+    // itemId -> held state (shared per-client)
+    private static readonly Dictionary<int, HeldState> heldByItemId = new();
+
+    // cache: itemId -> NetworkItem
+    private static readonly Dictionary<int, NetworkItem> itemCache = new();
+    private static float lastCacheTime = -999f;
+
+    [Serializable]
+    private class HeldState
+    {
+        public int actorNr;
+        public bool isLeftHand;
+
+        public Vector3 offsetLocalPos;
+        public Quaternion offsetLocalRot;
+
+        public NetworkItem item;
+        public Rigidbody rb;
+
+        public bool prevKinematic;
+        public bool prevUseGravity;
+    }
+
+    // ---------------------------
+    // UNITY
+    // ---------------------------
 
     private void Awake()
     {
-        itemsLayer = LayerMask.NameToLayer(ItemsLayerName);
-        Log($"Awake | ItemsLayer '{ItemsLayerName}' -> {itemsLayer}");
-        if (itemsLayer == -1) LogErr($"❌ Layer '{ItemsLayerName}' not found.");
-
-        if (LocalHandAnchor == null && transform.parent != null)
+        if (Mode == GrabberMode.LocalHand)
         {
-            LocalHandAnchor = transform.parent.Find("ItemAnchor");
-            Log(LocalHandAnchor ? $"✅ Auto-found LocalHandAnchor: {Path(LocalHandAnchor)}"
-                               : "❌ Could not auto-find ItemAnchor under parent. Assign LocalHandAnchor.");
+            itemsLayer = LayerMask.NameToLayer(ItemsLayerName);
+            if (itemsLayer == -1) Log($"❌ Layer '{ItemsLayerName}' not found.");
+
+            var col = GetComponent<Collider>();
+            if (col && !col.isTrigger) Log("⚠️ Your hand collider should be IsTrigger.");
+
+            if (LocalHandAnchor)
+            {
+                lastAnchorPos = LocalHandAnchor.position;
+                lastAnchorRot = LocalHandAnchor.rotation;
+            }
+            else
+            {
+                Log("⚠️ Assign LocalHandAnchor (your local rig ItemAnchor for this hand).");
+            }
         }
+        else // MirrorRigRoot
+        {
+            if (!photonView)
+            {
+                Debug.LogError("[HandGrabber] MirrorRigRoot mode requires a PhotonView on the SAME object.", this);
+                enabled = false;
+                return;
+            }
 
-        if (!IsMirrorRig && UseJointOnLocalRig)
-            EnsurePhysicsAnchor();
+            mirrorRigByActor[photonView.OwnerActorNr] = this;
 
-        RebuildItemCacheIfNeeded(force: true);
+            if (DebugLogs)
+                Debug.Log($"[HandGrabber] Registered mirror rig for actor {photonView.OwnerActorNr} | mine={photonView.IsMine}", this);
 
-        // XR hookup
-        TryAcquireXRDevice(force: true);
-        InputDevices.deviceConnected += OnXRDeviceConnected;
-        InputDevices.deviceDisconnected += OnXRDeviceDisconnected;
+            RebuildItemCache(force: true);
+        }
     }
 
     private void OnDestroy()
     {
-        InputDevices.deviceConnected -= OnXRDeviceConnected;
-        InputDevices.deviceDisconnected -= OnXRDeviceDisconnected;
-    }
-
-    private void OnDisable()
-    {
-        // Clean up if you disable the hand while holding something
-        if (held != null) Drop();
+        if (Mode == GrabberMode.MirrorRigRoot && photonView)
+        {
+            if (mirrorRigByActor.TryGetValue(photonView.OwnerActorNr, out var cur) && cur == this)
+                mirrorRigByActor.Remove(photonView.OwnerActorNr);
+        }
     }
 
     private void Update()
     {
-        if (!EnableXRControllerInput) return;
-        if (IsMirrorRig) return; // never poll input on mirror/remote rigs
-        PollXRControllers();
+        if (Mode != GrabberMode.LocalHand) return;
+        if (!LocalHandAnchor) return;
+
+        float dt = Mathf.Max(Time.deltaTime, 0.0001f);
+        anchorVel = (LocalHandAnchor.position - lastAnchorPos) / dt;
+        anchorAngVel = AngularVelocity(lastAnchorRot, LocalHandAnchor.rotation, dt);
+
+        lastAnchorPos = LocalHandAnchor.position;
+        lastAnchorRot = LocalHandAnchor.rotation;
     }
 
-    private void FixedUpdate()
+    private void LateUpdate()
     {
-        // Keep the physics anchor glued to the tracked anchor (local rig joint mode)
-        if (!IsMirrorRig && UseJointOnLocalRig && physicsAnchorRb != null && LocalHandAnchor != null)
-        {
-            physicsAnchorRb.MovePosition(LocalHandAnchor.position);
-            physicsAnchorRb.MoveRotation(LocalHandAnchor.rotation);
-        }
+        // Only the local client's OWN mirror rig drives items (one driver per client)
+        if (Mode != GrabberMode.MirrorRigRoot) return;
+        if (!DriveHeldItems) return;
+        if (!photonView || !photonView.IsMine) return;
+
+        DriveAllHeldItems();
     }
 
     // ---------------------------
-    // XR INPUT
+    // PUBLIC INPUT (call from buttons / XR / whatever)
     // ---------------------------
 
-    private void OnXRDeviceConnected(InputDevice device)
-    {
-        // If it matches our hand, grab it
-        if (IsDeviceForThisHand(device))
-        {
-            xrDevice = device;
-            xrDeviceValid = xrDevice.isValid;
-            Log($"✅ XR device connected for this hand: {device.name} ({device.characteristics})");
-        }
-    }
-
-    private void OnXRDeviceDisconnected(InputDevice device)
-    {
-        if (xrDeviceValid && device == xrDevice)
-        {
-            xrDeviceValid = false;
-            LogWarn($"XR device disconnected: {device.name}");
-        }
-    }
-
-    private void TryAcquireXRDevice(bool force)
-    {
-        if (!force && xrDeviceValid && xrDevice.isValid) return;
-
-        XRNode node = IsLeftHand ? XRNode.LeftHand : XRNode.RightHand;
-        xrDevice = InputDevices.GetDeviceAtXRNode(node);
-        xrDeviceValid = xrDevice.isValid;
-
-        if (!xrDeviceValid)
-        {
-            // Fallback: search by characteristics
-            var list = new List<InputDevice>();
-            var desired = InputDeviceCharacteristics.Controller |
-                          (IsLeftHand ? InputDeviceCharacteristics.Left : InputDeviceCharacteristics.Right);
-
-            InputDevices.GetDevicesWithCharacteristics(desired, list);
-            if (list.Count > 0)
-            {
-                xrDevice = list[0];
-                xrDeviceValid = xrDevice.isValid;
-            }
-        }
-
-        if (xrDeviceValid)
-            Log($"✅ Acquired XR device: {xrDevice.name} ({xrDevice.characteristics})");
-        else
-            LogWarn("XR device not found yet (will keep trying).");
-    }
-
-    private bool IsDeviceForThisHand(InputDevice device)
-    {
-        if (!device.isValid) return false;
-        var c = device.characteristics;
-        if ((c & InputDeviceCharacteristics.Controller) == 0) return false;
-
-        if (IsLeftHand) return (c & InputDeviceCharacteristics.Left) != 0;
-        else return (c & InputDeviceCharacteristics.Right) != 0;
-    }
-
-    private void PollXRControllers()
-    {
-        if (!xrDeviceValid || !xrDevice.isValid)
-            TryAcquireXRDevice(force: false);
-
-        if (!xrDeviceValid || !xrDevice.isValid)
-            return;
-
-        // Read buttons
-        bool primary = false;
-        bool secondary = false;
-
-        // Most common mappings (Quest/OpenXR):
-        // primaryButton = A (right) / X (left)
-        // secondaryButton = B (right) / Y (left)
-        xrDevice.TryGetFeatureValue(CommonUsages.primaryButton, out primary);
-        xrDevice.TryGetFeatureValue(CommonUsages.secondaryButton, out secondary);
-
-        // Trigger analog
-        float trigger = 0f;
-        xrDevice.TryGetFeatureValue(CommonUsages.trigger, out trigger);
-
-        // Convert to "pressed"
-        bool triggerPressed = trigger >= TriggerPressThreshold;
-
-        // Edge: Primary down
-        if (primary && !prevPrimary)
-            PrimaryButton();
-
-        // Edge: Secondary down
-        if (secondary && !prevSecondary)
-            SecondaryButton();
-
-        // Trigger behavior
-        switch (TriggerMode)
-        {
-            case TriggerSendMode.OnPressDown:
-                if (triggerPressed && !prevTriggerPressed)
-                    TriggerButton(trigger);
-                break;
-
-            case TriggerSendMode.WhileHeldThrottled:
-                if (triggerPressed)
-                {
-                    float hz = Mathf.Max(1f, TriggerSendHz);
-                    float minInterval = 1f / hz;
-                    if (Time.time - lastTriggerSendTime >= minInterval)
-                    {
-                        TriggerButton(trigger);
-                        lastTriggerSendTime = Time.time;
-                    }
-                }
-                break;
-
-            case TriggerSendMode.OnValueChanged:
-                if (triggerPressed && Mathf.Abs(trigger - prevTriggerValue) >= TriggerValueDelta)
-                    TriggerButton(trigger);
-                break;
-        }
-
-        prevPrimary = primary;
-        prevSecondary = secondary;
-        prevTriggerPressed = triggerPressed;
-        prevTriggerValue = trigger;
-    }
-
-    // ---------------------------
-    // INPUT ENTRY POINTS
-    // ---------------------------
-
-    // Primary = grab toggle (A)
+    // Grab toggle (one button)
     public void PrimaryButton()
     {
-        Log($"PrimaryButton | held={(held ? held.name : "NONE")} nearby={nearby.Count}");
-        if (held == null) TryGrab();
-        else Drop();
+        if (Mode != GrabberMode.LocalHand) return;
+
+        if (heldItemId == 0) TryGrab();
+        else Release();
     }
 
-    // Secondary = tool toggle (B)
-    public void SecondaryButton()
+    public void ForceRelease()
     {
-        if (!held) { LogWarn("SecondaryButton: no held item."); return; }
-
-        var ni = FindNetworkItemOnHeld();
-        if (!ni || ni.ItemID == 0) { LogWarn("SecondaryButton: held item missing NetworkItem/ItemID."); return; }
-
-        // Run locally
-        ApplyItemButtonLocal(ni.ItemID, ItemButton.Secondary, 1f);
-
-        // Sync via ItemNetworkManager PhotonView (NO PhotonView needed here)
-        if (ItemNetworkManager.Instance != null)
-            ItemNetworkManager.Instance.BroadcastItemButton(ni.ItemID, (int)ItemButton.Secondary, 1f);
-        else
-            LogWarn("SecondaryButton: ItemNetworkManager.Instance is null (no sync).");
-    }
-
-    // Trigger = shoot/use
-    public void TriggerButton(float value = 1f)
-    {
-        if (!held) { LogWarn("TriggerButton: no held item."); return; }
-
-        var ni = FindNetworkItemOnHeld();
-        if (!ni || ni.ItemID == 0) { LogWarn("TriggerButton: held item missing NetworkItem/ItemID."); return; }
-
-        ApplyItemButtonLocal(ni.ItemID, ItemButton.Trigger, value);
-
-        if (ItemNetworkManager.Instance != null)
-            ItemNetworkManager.Instance.BroadcastItemButton(ni.ItemID, (int)ItemButton.Trigger, value);
-        else
-            LogWarn("TriggerButton: ItemNetworkManager.Instance is null (no sync).");
+        if (Mode != GrabberMode.LocalHand) return;
+        if (heldItemId != 0) Release();
     }
 
     // ---------------------------
-    // GRAB / DROP
+    // GRAB / RELEASE (LOCAL HAND)
     // ---------------------------
 
     private void TryGrab()
     {
-        CleanupNulls();
+        if (!LocalHandAnchor) { Log("TryGrab: no LocalHandAnchor."); return; }
 
-        if (nearby.Count == 0)
+        var myMirrorRig = GetLocalMirrorRigMine();
+        if (!myMirrorRig)
         {
-            LogWarn("TryGrab: no nearby items.");
+            Log("TryGrab: no local mirror rig found (are you in a lobby / did the mirror rig spawn?).");
             return;
         }
+
+        CleanupNulls();
+        if (nearby.Count == 0) { Log("TryGrab: no nearby items."); return; }
 
         Rigidbody rb = GetClosest();
-        if (!rb) { LogWarn("TryGrab: closest was null."); return; }
-
-        NetworkItem ni = FindNetworkItem(rb);
-        if (!ni) { LogWarn($"TryGrab: '{rb.name}' has no NetworkItem."); return; }
-        if (ni.ItemID == 0) { LogWarn($"TryGrab: '{rb.name}' ItemID == 0."); return; }
-
-        held = rb;
-
-        // MIRROR/REMOTE RIG: parent + kinematic
-        if (IsMirrorRig || !UseJointOnLocalRig)
-        {
-            if (LocalHandAnchor != null)
-                rb.transform.SetParent(LocalHandAnchor, true);
-            else
-                LogWarn("LocalHandAnchor missing; parenting skipped.");
-
-            rb.isKinematic = true;
-            rb.velocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-
-            Log($"✅ Grabbed (PARENT MODE) '{rb.name}' itemID={ni.ItemID}");
-            return;
-        }
-
-        // LOCAL RIG: JOINT MODE (NO parenting)
-        if (LocalHandAnchor == null)
-        {
-            LogWarn("TryGrab: LocalHandAnchor missing (joint mode). Falling back to parent mode.");
-            rb.transform.SetParent(null, true);
-            rb.transform.SetParent(LocalHandAnchor, true);
-            rb.isKinematic = true;
-            return;
-        }
-
-        EnsurePhysicsAnchor();
-
-        if (physicsAnchorRb == null)
-        {
-            LogErr("TryGrab: physicsAnchorRb missing; cannot joint-grab.");
-            return;
-        }
-
-        // Make sure item isn't parented to anything
-        rb.transform.SetParent(null, true);
-
-        // Remember & tweak physics while held
-        heldPrevUseGravity = rb.useGravity;
-        if (DisableGravityWhileHeld) rb.useGravity = false;
-
-        // Snap the item to the hand anchor pose (and apply optional snap offset)
-        Quaternion targetRot = LocalHandAnchor.rotation;
-        Vector3 targetPos = LocalHandAnchor.position;
-
-        if (ni != null && ni.SnapGrab)
-        {
-            targetPos = LocalHandAnchor.TransformPoint(ni.SnapLocalPosition);
-            targetRot = LocalHandAnchor.rotation * Quaternion.Euler(ni.SnapLocalEulerAngles);
-        }
-
-        rb.position = targetPos;
-        rb.rotation = targetRot;
-
-        rb.velocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
-        rb.isKinematic = false;
-
-        // Create joint on the HELD item, connecting to our kinematic physics anchor
-        heldJoint = rb.gameObject.AddComponent<FixedJoint>();
-        heldJoint.connectedBody = physicsAnchorRb;
-        heldJoint.enableCollision = JointEnableCollision;
-        heldJoint.breakForce = JointBreakForce;
-        heldJoint.breakTorque = JointBreakTorque;
-        heldJoint.massScale = Mathf.Max(0.0001f, JointMassScale);
-        heldJoint.connectedMassScale = Mathf.Max(0.0001f, JointConnectedMassScale);
-
-        Log($"✅ Grabbed (JOINT MODE) '{rb.name}' itemID={ni.ItemID}");
-    }
-
-    private void Drop()
-    {
-        Rigidbody rb = held;
-        held = null;
         if (!rb) return;
 
-        // LOCAL JOINT MODE: remove joint + restore physics
-        if (!IsMirrorRig && UseJointOnLocalRig)
+        var ni = rb.GetComponentInParent<NetworkItem>();
+        if (!ni || ni.ItemID == 0) { Log($"TryGrab: '{rb.name}' missing NetworkItem/ItemID."); return; }
+
+        // Offset stored in LOCAL HAND ANCHOR SPACE (so mirror rig can recreate exact hold pose)
+        Vector3 offsetLocalPos = Quaternion.Inverse(LocalHandAnchor.rotation) * (rb.position - LocalHandAnchor.position);
+        Quaternion offsetLocalRot = Quaternion.Inverse(LocalHandAnchor.rotation) * rb.rotation;
+
+        heldItemId = ni.ItemID;
+
+        // RPC #1: Grab
+        myMirrorRig.photonView.RPC(nameof(RPC_Grab), RpcTarget.All,
+            heldItemId,
+            PhotonNetwork.LocalPlayer.ActorNumber,
+            IsLeftHand,
+            offsetLocalPos,
+            offsetLocalRot
+        );
+
+        Log($"Grab -> item={heldItemId}");
+    }
+
+    private void Release()
+    {
+        var myMirrorRig = GetLocalMirrorRigMine();
+        if (!myMirrorRig)
         {
-            if (heldJoint != null)
-            {
-                Destroy(heldJoint);
-                heldJoint = null;
-            }
-
-            rb.useGravity = heldPrevUseGravity;
-            rb.isKinematic = false;
-            rb.transform.SetParent(null, true);
-
-            Log($"✅ Dropped (JOINT MODE) '{rb.name}'");
+            Log("Release: no local mirror rig found. Clearing local held state anyway.");
+            heldItemId = 0;
             return;
         }
 
-        // MIRROR/REMOTE MODE: unparent + un-kinematic
-        rb.transform.SetParent(null, true);
-        rb.isKinematic = false;
+        Vector3 vel = SendReleaseVelocity ? anchorVel : Vector3.zero;
+        Vector3 ang = SendReleaseVelocity ? anchorAngVel : Vector3.zero;
 
-        Log($"✅ Dropped (PARENT MODE) '{rb.name}'");
+        // RPC #2: Release
+        myMirrorRig.photonView.RPC(nameof(RPC_Release), RpcTarget.All,
+            heldItemId,
+            vel,
+            ang
+        );
+
+        Log($"Release -> item={heldItemId}");
+        heldItemId = 0;
     }
 
-    private void EnsurePhysicsAnchor()
+    // ---------------------------
+    // RPCs (on MirrorRigRoot instances across clients)
+    // ---------------------------
+
+    [PunRPC]
+    private void RPC_Grab(int itemId, int actorNr, bool isLeftHand, Vector3 offsetLocalPos, Quaternion offsetLocalRot)
     {
-        if (physicsAnchorRb != null) return;
-        if (LocalHandAnchor == null) return;
+        if (itemId == 0) return;
 
-        // Create a hidden-ish child under the tracked anchor that owns the kinematic Rigidbody
-        var go = new GameObject(IsLeftHand ? "HG_PhysicsAnchor_L" : "HG_PhysicsAnchor_R");
-        go.transform.SetParent(LocalHandAnchor, false);
-        go.transform.localPosition = Vector3.zero;
-        go.transform.localRotation = Quaternion.identity;
-        go.transform.localScale = Vector3.one;
+        var item = FindItem(itemId);
+        var rb = item ? item.GetComponent<Rigidbody>() : null;
 
-        physicsAnchor = go.transform;
+        var hs = new HeldState
+        {
+            actorNr = actorNr,
+            isLeftHand = isLeftHand,
+            offsetLocalPos = offsetLocalPos,
+            offsetLocalRot = offsetLocalRot,
+            item = item,
+            rb = rb,
+            prevKinematic = rb ? rb.isKinematic : true,
+            prevUseGravity = rb ? rb.useGravity : false
+        };
 
-        physicsAnchorRb = go.AddComponent<Rigidbody>();
-        physicsAnchorRb.isKinematic = true;
-        physicsAnchorRb.useGravity = false;
-        physicsAnchorRb.detectCollisions = false;
-        physicsAnchorRb.interpolation = RigidbodyInterpolation.Interpolate;
+        heldByItemId[itemId] = hs;
 
-        Log($"✅ Created physics anchor: {Path(physicsAnchor)}");
+        if (rb)
+        {
+            rb.isKinematic = true;
+            rb.useGravity = false;
+            rb.velocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        if (DebugLogs)
+            Debug.Log($"[HandGrabber] RPC_Grab item={itemId} actor={actorNr} hand={(isLeftHand ? "L" : "R")}", this);
+    }
+
+    [PunRPC]
+    private void RPC_Release(int itemId, Vector3 velocity, Vector3 angularVelocity)
+    {
+        if (itemId == 0) return;
+        if (!heldByItemId.TryGetValue(itemId, out var hs) || hs == null) return;
+
+        heldByItemId.Remove(itemId);
+
+        // reacquire if needed
+        if (hs.item == null)
+        {
+            hs.item = FindItem(itemId);
+            hs.rb = hs.item ? hs.item.GetComponent<Rigidbody>() : null;
+        }
+
+        if (hs.rb)
+        {
+            hs.rb.isKinematic = hs.prevKinematic;
+            hs.rb.useGravity = hs.prevUseGravity;
+
+            // optional throw sync
+            hs.rb.velocity = velocity;
+            hs.rb.angularVelocity = angularVelocity;
+        }
+
+        if (DebugLogs)
+            Debug.Log($"[HandGrabber] RPC_Release item={itemId}", this);
+    }
+
+    // ---------------------------
+    // DRIVE HELD ITEMS (done by local client's mirror rig that is mine)
+    // ---------------------------
+
+    private static void DriveAllHeldItems()
+    {
+        if (heldByItemId.Count == 0) return;
+
+        List<int> remove = null;
+
+        foreach (var kv in heldByItemId)
+        {
+            int itemId = kv.Key;
+            var hs = kv.Value;
+            if (hs == null)
+            {
+                (remove ??= new List<int>()).Add(itemId);
+                continue;
+            }
+
+            // Find the holder's mirror rig anchors
+            if (!mirrorRigByActor.TryGetValue(hs.actorNr, out var rig) || !rig) continue;
+
+            Transform anchor = hs.isLeftHand ? rig.LeftItemAnchor : rig.RightItemAnchor;
+            if (!anchor) continue;
+
+            // reacquire item if needed (spawned later / cache missed)
+            if (hs.item == null)
+            {
+                hs.item = FindItem(itemId);
+                hs.rb = hs.item ? hs.item.GetComponent<Rigidbody>() : null;
+
+                if (hs.rb)
+                {
+                    hs.rb.isKinematic = true;
+                    hs.rb.useGravity = false;
+                    hs.rb.velocity = Vector3.zero;
+                    hs.rb.angularVelocity = Vector3.zero;
+                }
+            }
+
+            if (!hs.item) continue;
+
+            // Position = anchor + rotated offset
+            var t = hs.item.transform;
+            t.position = anchor.position + (anchor.rotation * hs.offsetLocalPos);
+            t.rotation = anchor.rotation * hs.offsetLocalRot;
+        }
+
+        if (remove != null)
+            foreach (var id in remove)
+                heldByItemId.Remove(id);
+    }
+
+    // ---------------------------
+    // ITEM FINDING (no PhotonView required on items)
+    // ---------------------------
+
+    private static NetworkItem FindItem(int itemId)
+    {
+        if (itemCache.TryGetValue(itemId, out var ni) && ni) return ni;
+
+        RebuildItemCache(force: false);
+        if (itemCache.TryGetValue(itemId, out ni) && ni) return ni;
+
+        RebuildItemCache(force: true);
+        itemCache.TryGetValue(itemId, out ni);
+        return ni;
+    }
+
+    private static void RebuildItemCache(bool force)
+    {
+        if (!force && Time.time - lastCacheTime < 0.5f) return;
+
+        itemCache.Clear();
+        foreach (var ni in FindObjectsOfType<NetworkItem>(true))
+        {
+            if (!ni || ni.ItemID == 0) continue;
+            itemCache[ni.ItemID] = ni;
+        }
+
+        lastCacheTime = Time.time;
+    }
+
+    private static HandGrabber GetLocalMirrorRigMine()
+    {
+        foreach (var rig in mirrorRigByActor.Values)
+        {
+            if (rig && rig.photonView && rig.photonView.IsMine)
+                return rig;
+        }
+        return null;
+    }
+
+    // ---------------------------
+    // TRIGGER DETECTION (LOCAL HAND)
+    // ---------------------------
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (Mode != GrabberMode.LocalHand) return;
+        if (itemsLayer == -1) return;
+        if (other.gameObject.layer != itemsLayer) return;
+
+        var rb = other.attachedRigidbody;
+        if (!rb) return;
+
+        if (!nearby.Contains(rb))
+            nearby.Add(rb);
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (Mode != GrabberMode.LocalHand) return;
+
+        var rb = other.attachedRigidbody;
+        if (rb) nearby.Remove(rb);
+    }
+
+    private void CleanupNulls()
+    {
+        for (int i = nearby.Count - 1; i >= 0; i--)
+            if (nearby[i] == null) nearby.RemoveAt(i);
     }
 
     private Rigidbody GetClosest()
@@ -485,197 +447,22 @@ public class HandGrabber : MonoBehaviour
         return best;
     }
 
-    private NetworkItem FindNetworkItemOnHeld() => held ? FindNetworkItem(held) : null;
-
-    private NetworkItem FindNetworkItem(Rigidbody rb)
-    {
-        if (!rb) return null;
-        var ni = rb.GetComponent<NetworkItem>();
-        if (ni) return ni;
-        ni = rb.GetComponentInParent<NetworkItem>();
-        if (ni) return ni;
-        return rb.GetComponentInChildren<NetworkItem>(true);
-    }
-
     // ---------------------------
-    // ITEM BUTTON EXECUTION (LOCAL + RPC)
+    // MATH + LOG
     // ---------------------------
 
-    public enum ItemButton { Primary = 0, Secondary = 1, Trigger = 2 }
-
-    // Called by ItemNetworkManager RPC too:
-    public static void ApplyItemButtonLocal(int itemId, ItemButton button, float value)
+    private static Vector3 AngularVelocity(Quaternion from, Quaternion to, float dt)
     {
-        if (itemId == 0) return;
-
-        RebuildItemCacheIfNeeded(force: false);
-
-        if (!idToItemCache.TryGetValue(itemId, out var ni) || ni == null)
-        {
-            RebuildItemCacheIfNeeded(force: true);
-            idToItemCache.TryGetValue(itemId, out ni);
-        }
-
-        if (ni == null)
-        {
-            Debug.LogWarning($"[HandGrabber] ApplyItemButtonLocal: could not find NetworkItem with ItemID={itemId}");
-            return;
-        }
-
-        GameObject root = ni.gameObject;
-        InvokeButtonMethods(root, button, value, debugCalls: true);
+        Quaternion dq = to * Quaternion.Inverse(from);
+        dq.ToAngleAxis(out float angle, out Vector3 axis);
+        if (float.IsNaN(axis.x)) return Vector3.zero;
+        if (angle > 180f) angle -= 360f;
+        return axis * (angle * Mathf.Deg2Rad / dt);
     }
 
-    private static int InvokeButtonMethods(GameObject itemRoot, ItemButton button, float value, bool debugCalls)
+    private void Log(string msg)
     {
-        if (!itemRoot) return 0;
-
-        // EXACT names you asked for + harmless aliases
-        string[] names = button switch
-        {
-            ItemButton.Primary => new[] { "Primary", "OnPrimary", "PrimaryButton", "OnPrimaryButton" },
-            ItemButton.Secondary => new[] { "Secondary", "OnSecondary", "SecondaryButton", "OnSecondaryButton" },
-            ItemButton.Trigger => new[] { "Trigger", "OnTrigger", "TriggerButton", "OnTriggerButton" },
-            _ => Array.Empty<string>()
-        };
-
-        int calls = 0;
-        var behaviours = itemRoot.GetComponentsInChildren<MonoBehaviour>(true);
-
-        foreach (var mb in behaviours)
-        {
-            if (!mb) continue;
-
-            Type t = mb.GetType();
-            var map = GetCachedMethodsForType(t);
-
-            foreach (string methodName in names)
-            {
-                if (!map.TryGetValue(methodName, out var methods) || methods == null) continue;
-
-                foreach (var m in methods)
-                {
-                    if (m == null) continue;
-
-                    var pars = m.GetParameters();
-
-                    try
-                    {
-                        if (pars.Length == 0)
-                        {
-                            m.Invoke(mb, null);
-                            calls++;
-                            if (debugCalls) Debug.Log($"[ItemInput] {itemRoot.name}: {t.Name}.{m.Name}()");
-                        }
-                        else if (pars.Length == 1 && pars[0].ParameterType == typeof(float))
-                        {
-                            m.Invoke(mb, new object[] { value });
-                            calls++;
-                            if (debugCalls) Debug.Log($"[ItemInput] {itemRoot.name}: {t.Name}.{m.Name}({value})");
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.LogError($"[HandGrabber] Exception invoking {t.Name}.{m.Name} on '{itemRoot.name}': {e}");
-                    }
-                }
-            }
-        }
-
-        return calls;
-    }
-
-    private static Dictionary<string, MethodInfo[]> GetCachedMethodsForType(Type t)
-    {
-        if (methodCache.TryGetValue(t, out var cached) && cached != null)
-            return cached;
-
-        var dict = new Dictionary<string, MethodInfo[]>(StringComparer.Ordinal);
-
-        var methods = t.GetMethods(BindingFlags.Instance | BindingFlags.Public);
-
-        var temp = new Dictionary<string, List<MethodInfo>>(StringComparer.Ordinal);
-        foreach (var m in methods)
-        {
-            if (m.ReturnType != typeof(void)) continue;
-
-            if (!temp.TryGetValue(m.Name, out var list))
-            {
-                list = new List<MethodInfo>();
-                temp[m.Name] = list;
-            }
-            list.Add(m);
-        }
-
-        foreach (var kv in temp)
-            dict[kv.Key] = kv.Value.ToArray();
-
-        methodCache[t] = dict;
-        return dict;
-    }
-
-    private static void RebuildItemCacheIfNeeded(bool force)
-    {
-        if (!force && Time.time - lastCacheRebuildTime < 0.5f) return;
-
-        idToItemCache.Clear();
-        var all = GameObject.FindObjectsOfType<NetworkItem>(true);
-        foreach (var ni in all)
-        {
-            if (!ni) continue;
-            if (ni.ItemID == 0) continue;
-            idToItemCache[ni.ItemID] = ni;
-        }
-
-        lastCacheRebuildTime = Time.time;
-    }
-
-    // ---------------------------
-    // TRIGGER DETECTION
-    // ---------------------------
-
-    private void OnTriggerEnter(Collider other)
-    {
-        if (itemsLayer == -1) return;
-        if (other.gameObject.layer != itemsLayer) return;
-
-        var rb = other.attachedRigidbody;
-        if (!rb) { LogWarn($"TriggerEnter '{other.name}' on Items layer but no Rigidbody."); return; }
-
-        if (!nearby.Contains(rb))
-        {
-            nearby.Add(rb);
-            Log($"Nearby: {rb.name} (count={nearby.Count})");
-        }
-    }
-
-    private void OnTriggerExit(Collider other)
-    {
-        var rb = other.attachedRigidbody;
-        if (rb != null && nearby.Remove(rb))
-            Log($"Nearby remove: {rb.name} (count={nearby.Count})");
-    }
-
-    private void CleanupNulls()
-    {
-        for (int i = nearby.Count - 1; i >= 0; i--)
-            if (nearby[i] == null) nearby.RemoveAt(i);
-    }
-
-    // ---------------------------
-    // LOGGING
-    // ---------------------------
-
-    private void Log(string msg) { if (DebugLogs) Debug.Log($"[HG {(IsLeftHand ? "L" : "R")}] {msg}", this); }
-    private void LogWarn(string msg) { if (DebugLogs) Debug.LogWarning($"[HG {(IsLeftHand ? "L" : "R")}] {msg}", this); }
-    private void LogErr(string msg) { Debug.LogError($"[HG {(IsLeftHand ? "L" : "R")}] {msg}", this); }
-
-    private static string Path(Transform t)
-    {
-        if (!t) return "NULL";
-        string s = t.name;
-        while (t.parent != null) { t = t.parent; s = t.name + "/" + s; }
-        return s;
+        if (DebugLogs) Debug.Log($"[HandGrabber {(IsLeftHand ? "L" : "R")}] {msg}", this);
     }
 
 #if UNITY_EDITOR
@@ -685,25 +472,15 @@ public class HandGrabber : MonoBehaviour
         public override void OnInspectorGUI()
         {
             DrawDefaultInspector();
-
-            UnityEditor.EditorGUILayout.Space(8);
-            UnityEditor.EditorGUILayout.LabelField("Debug Buttons", UnityEditor.EditorStyles.boldLabel);
-
             var hg = (HandGrabber)target;
 
-            using (new UnityEditor.EditorGUILayout.HorizontalScope())
+            if (hg.Mode == GrabberMode.LocalHand)
             {
-                if (GUILayout.Button("Primary (A)")) hg.PrimaryButton();
-                if (GUILayout.Button("Secondary (B)")) hg.SecondaryButton();
-                if (GUILayout.Button("Trigger")) hg.TriggerButton(1f);
+                UnityEditor.EditorGUILayout.Space(8);
+                UnityEditor.EditorGUILayout.LabelField("Test", UnityEditor.EditorStyles.boldLabel);
+                if (GUILayout.Button("PrimaryButton() (Grab/Release Toggle)"))
+                    hg.PrimaryButton();
             }
-
-            UnityEditor.EditorGUILayout.HelpBox(
-                "Local rig (IsMirrorRig OFF) grabs with a FixedJoint to a kinematic physics anchor (no parenting). " +
-                "Mirror rig (IsMirrorRig ON) uses parenting + kinematic.\n\n" +
-                "XR Controller Input: If enabled, polls XR devices and calls Primary/Secondary/Trigger automatically.",
-                UnityEditor.MessageType.Info
-            );
         }
     }
 #endif
