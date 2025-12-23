@@ -159,7 +159,6 @@ GameObject:
   m_Component:
   - component: {fileID: 4650346559712415}
   - component: {fileID: 108457983156684850}
-  - component: {fileID: 114046325563827641}
   - component: {fileID: 3544141641325571808}
   m_Layer: 3
   m_Name: Light
@@ -247,18 +246,6 @@ Light:
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
   m_ShadowAngle: 0
---- !u!114 &114046325563827641
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1156202665682051}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3ace53bbfa05ad5d4b15ab76107fbf69, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &3544141641325571808
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -358,12 +345,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ItemID: 0
+  ComputeItemIdOnAwake: 1
+  AutoRegister: 1
   BuyPrice: 49
   SellPriceOverride: 0
   SnapGrab: 1
   SnapLocalPosition: {x: 0, y: 0, z: 0}
   SnapLocalEulerAngles: {x: 0, y: 0, z: 0}
   CanBeStoredInBackpack: 1
+  DebugLogs: 0
 --- !u!114 &4972256105086769342
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -590,7 +580,6 @@ GameObject:
   m_Component:
   - component: {fileID: 4490213852253204}
   - component: {fileID: 64786619162001050}
-  - component: {fileID: 114190496905626518}
   m_Layer: 3
   m_Name: LightCollider
   m_TagString: Untagged
@@ -635,15 +624,3 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: 10f80a2c2fabe8c4fb05581121020f4b, type: 2}
---- !u!114 &114190496905626518
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1900140183727682}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 39f29a24de9ba0a399dec88cb478308a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 

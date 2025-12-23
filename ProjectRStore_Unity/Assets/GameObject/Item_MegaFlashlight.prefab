@@ -345,7 +345,6 @@ GameObject:
   m_Component:
   - component: {fileID: 4706967330170055}
   - component: {fileID: 64210569086473789}
-  - component: {fileID: 114576405497581387}
   m_Layer: 3
   m_Name: LightCollider
   m_TagString: Untagged
@@ -390,18 +389,6 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: 10f80a2c2fabe8c4fb05581121020f4b, type: 2}
---- !u!114 &114576405497581387
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1431971066967263}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 39f29a24de9ba0a399dec88cb478308a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1487177261057331
 GameObject:
   m_ObjectHideFlags: 0
@@ -412,7 +399,6 @@ GameObject:
   m_Component:
   - component: {fileID: 4563405524739813}
   - component: {fileID: 108560162478170082}
-  - component: {fileID: 114903772803478767}
   - component: {fileID: 978039978638215277}
   m_Layer: 3
   m_Name: Spot Light
@@ -500,18 +486,6 @@ Light:
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
   m_ShadowAngle: 0
---- !u!114 &114903772803478767
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1487177261057331}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3ace53bbfa05ad5d4b15ab76107fbf69, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &978039978638215277
 MonoBehaviour:
   m_ObjectHideFlags: 0

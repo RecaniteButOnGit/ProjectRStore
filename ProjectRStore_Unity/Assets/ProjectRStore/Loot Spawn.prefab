@@ -1,0 +1,124 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &4362927135166908924
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2364834445807842265}
+  m_Layer: 0
+  m_Name: Spawner
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2364834445807842265
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4362927135166908924}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 1.5, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8793924832253748229}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &8762223577070384630
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8793924832253748229}
+  - component: {fileID: 1222051958960139643}
+  - component: {fileID: 4406541725888507943}
+  m_Layer: 0
+  m_Name: Loot Spawn
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8793924832253748229
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8762223577070384630}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 128.21, y: -8, z: -116.72}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 2364834445807842265}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1222051958960139643
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8762223577070384630}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa584fbee541324448dd18d8409c7a41, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ObservedComponentsFoldoutOpen: 1
+  Group: 0
+  prefixField: -1
+  Synchronization: 0
+  OwnershipTransfer: 1
+  observableSearch: 2
+  ObservedComponents: []
+  sceneViewId: 0
+  InstantiationId: 0
+  isRuntimeInstantiated: 0
+--- !u!114 &4406541725888507943
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8762223577070384630}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3fde083f011d1a940920e3da16431d1a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SpawnPrefabs:
+  - {fileID: 1978258143509619, guid: 641ee0c04b874bd4fa7e7428485f26c4, type: 3}
+  - {fileID: 1703734174216238, guid: f382931e52ccd4d4e9092e710ab7c715, type: 3}
+  - {fileID: 1043149170699715, guid: 129c7197e7ae70e4aa0b9fedacd42d32, type: 3}
+  - {fileID: 1610668841122974, guid: 9ec19171a4f89c14299adbeec014b428, type: 3}
+  - {fileID: 1943409663179692, guid: e0b88e7b45679fd45842122462a7bbd0, type: 3}
+  - {fileID: 1581402450891958, guid: f44e78d1aeb93fc4195e84928fdccc76, type: 3}
+  - {fileID: 1583834524433774, guid: 1f5a0b68baa331f40aa709bbbf164b1d, type: 3}
+  - {fileID: 1692434093511553, guid: 4e8a9254edbca0b4d8698fe80c6dccf5, type: 3}
+  - {fileID: 1372468528093583, guid: d54753214fd873e4195dc72541bc817c, type: 3}
+  - {fileID: 1778670109297782, guid: 56254ca5338dbce42a0508b73ffe4aa3, type: 3}
+  - {fileID: 1526601665867238, guid: e21ff64c57124ba49a20437c10a6869d, type: 3}
+  - {fileID: 1175755949467576, guid: 664d665c309e5e84ba9228c6bbd53cf5, type: 3}
+  - {fileID: 1115570174579268, guid: 4cd79ee3499d3c548b3cb39231ad565b, type: 3}
+  - {fileID: 1729874975138165, guid: c445c003391f5564f9e36249ba54bb6e, type: 3}
+  - {fileID: 1409650392008549, guid: cab37c22fb07ff04e8d3014eb044a5ef, type: 3}
+  PlayerTriggerRadius: 30
+  BlockIfItemWithin: 2
+  SpawnPoint: {fileID: 2364834445807842265}
+  PlayerTag: PlayerTag
+  CheckInterval: 0.5
+  SpawnOnce: 0
+  DrawGizmos: 1

@@ -7,7 +7,7 @@ public class NetworkItem : MonoBehaviour
     [Header("Identity")]
     public int ItemID;
 
-    [Tooltip("If true, overwrites ItemID on Awake/Start using a deterministic hash (scene + hierarchy path + sibling indices + position).")]
+    [Tooltip("If true, overwrites ItemID on Start using a deterministic hash (scene + hierarchy path + sibling indices + position).")]
     public bool ComputeItemIdOnAwake = true;
 
     [Tooltip("Automatically registers this item with ItemNetworkManager when ready.")]
@@ -33,11 +33,16 @@ public class NetworkItem : MonoBehaviour
 
     private void Awake()
     {
+        // IMPORTANT: We only cache refs here.
+        // Spawners can set ItemID before Start runs (same frame as Instantiate),
+        // so everybody can share the same ItemID.
         _rb = GetComponent<Rigidbody>() ?? GetComponentInChildren<Rigidbody>(true);
+    }
 
+    private void Start()
+    {
         if (ComputeItemIdOnAwake)
         {
-            // Only compute if unset OR if you explicitly want recompute behavior.
             if (ItemID == 0)
                 ItemID = ComputeDeterministicItemId(transform);
         }
@@ -46,14 +51,27 @@ public class NetworkItem : MonoBehaviour
             TryRegisterOrRetry();
     }
 
-    private void Start()
+    /// <summary>
+    /// Call this right after Instantiate (before Start runs) to force a shared ItemID across clients.
+    /// </summary>
+    public void InitializeFromSpawner(int forcedItemId, bool registerNow = true)
     {
-        // In case something changes during initialization order
-        if (ComputeItemIdOnAwake && ItemID == 0)
-            ItemID = ComputeDeterministicItemId(transform);
+        if (forcedItemId <= 0) forcedItemId = 1;
 
-        if (AutoRegister)
+        ItemID = forcedItemId;
+
+        // Prevent later auto-compute from overwriting.
+        ComputeItemIdOnAwake = false;
+
+        if (registerNow)
+        {
+            AutoRegister = true;
             TryRegisterOrRetry();
+        }
+        else
+        {
+            AutoRegister = false;
+        }
     }
 
     private void TryRegisterOrRetry()
@@ -72,7 +90,6 @@ public class NetworkItem : MonoBehaviour
             return;
         }
 
-        // Manager might spawn after this item; retry a bit.
         if (ItemNetworkManager.Instance == null)
         {
             StartCoroutine(CoWaitForManagerThenRegister());
@@ -121,8 +138,7 @@ public class NetworkItem : MonoBehaviour
 
     public void ApplySnapIfNeeded(Transform t)
     {
-        if (!SnapGrab)
-            return;
+        if (!SnapGrab) return;
 
         t.localPosition = SnapLocalPosition;
         t.localRotation = Quaternion.Euler(SnapLocalEulerAngles);
@@ -131,18 +147,13 @@ public class NetworkItem : MonoBehaviour
     // =========================================================
     // Deterministic ID (no PhotonView needed)
     // =========================================================
-
     private static int ComputeDeterministicItemId(Transform t)
     {
-        // Build a stable key: scene + full hierarchy path with sibling indices + position.
-        // This should match across clients as long as the scene hierarchy is the same.
         var sb = new StringBuilder(256);
 
         var sceneName = t.gameObject.scene.IsValid() ? t.gameObject.scene.name : "NoScene";
         sb.Append(sceneName).Append('|');
 
-        // Hierarchy path with sibling indices (more stable than names alone)
-        // Example segment: 0003:Backpack/0000:ItemRoot/0001:Coin
         var stack = new System.Collections.Generic.List<Transform>(16);
         Transform cur = t;
         while (cur != null)
@@ -162,14 +173,12 @@ public class NetworkItem : MonoBehaviour
             if (i != stack.Count - 1) sb.Append('/');
         }
 
-        // Add position (rounded) to reduce chance of collisions if hierarchy matches but there are duplicates
         Vector3 p = t.position;
         sb.Append("|pos=")
           .Append(Round3(p.x)).Append(',')
           .Append(Round3(p.y)).Append(',')
           .Append(Round3(p.z));
 
-        // Hash to int (FNV-1a 32-bit)
         uint hash = 2166136261u;
         string key = sb.ToString();
         for (int i = 0; i < key.Length; i++)
@@ -178,7 +187,6 @@ public class NetworkItem : MonoBehaviour
             hash *= 16777619u;
         }
 
-        // Make it a positive non-zero int
         int id = (int)(hash & 0x7FFFFFFF);
         if (id == 0) id = 1;
         return id;
@@ -186,7 +194,6 @@ public class NetworkItem : MonoBehaviour
 
     private static string Round3(float v)
     {
-        // 3 decimals is usually plenty for scene-placed object uniqueness
         return (Mathf.Round(v * 1000f) / 1000f).ToString("0.000");
     }
 

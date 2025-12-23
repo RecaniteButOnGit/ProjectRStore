@@ -148,7 +148,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4778037260213483}
-  - component: {fileID: 114668768503878966}
   - component: {fileID: 135756716372056776}
   m_Layer: 0
   m_Name: ItemTrigger_1
@@ -173,18 +172,6 @@ Transform:
   - {fileID: 4046731875553510}
   m_Father: {fileID: 4572843880741623}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &114668768503878966
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1044242721369678}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 95b4a6433f959dc07cba2bf7de485254, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!135 &135756716372056776
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -215,7 +202,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4477495807793868}
-  - component: {fileID: 114563977968679175}
   - component: {fileID: 135860221343607432}
   m_Layer: 0
   m_Name: ItemTrigger_2
@@ -240,18 +226,6 @@ Transform:
   - {fileID: 4781017934441467}
   m_Father: {fileID: 4572843880741623}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &114563977968679175
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1066945029223100}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 95b4a6433f959dc07cba2bf7de485254, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!135 &135860221343607432
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -1025,7 +999,6 @@ GameObject:
   m_Component:
   - component: {fileID: 4781017934441467}
   - component: {fileID: 108422829995360624}
-  - component: {fileID: 114232861191907503}
   - component: {fileID: 1330302346882057963}
   m_Layer: 0
   m_Name: Point Light_2
@@ -1111,18 +1084,6 @@ Light:
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
   m_ShadowAngle: 0
---- !u!114 &114232861191907503
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1104593267916731}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3ace53bbfa05ad5d4b15ab76107fbf69, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &1330302346882057963
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1701,7 +1662,6 @@ GameObject:
   m_Component:
   - component: {fileID: 4046731875553510}
   - component: {fileID: 108718888136766575}
-  - component: {fileID: 114015064917016915}
   - component: {fileID: 8568023221504361223}
   m_Layer: 0
   m_Name: Point Light_1
@@ -1787,18 +1747,6 @@ Light:
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
   m_ShadowAngle: 0
---- !u!114 &114015064917016915
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1206606631491284}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3ace53bbfa05ad5d4b15ab76107fbf69, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &8568023221504361223
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3093,7 +3041,6 @@ GameObject:
   m_Component:
   - component: {fileID: 4949588703429910}
   - component: {fileID: 108402797804199594}
-  - component: {fileID: 114840527252632913}
   - component: {fileID: 3438384250794036735}
   m_Layer: 0
   m_Name: Point Light
@@ -3179,18 +3126,6 @@ Light:
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
   m_ShadowAngle: 0
---- !u!114 &114840527252632913
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1440969242514839}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3ace53bbfa05ad5d4b15ab76107fbf69, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &3438384250794036735
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4914,7 +4849,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4593935138543792}
-  - component: {fileID: 114602255017560065}
   - component: {fileID: 135008862486766230}
   m_Layer: 0
   m_Name: ItemTrigger_0
@@ -4939,18 +4873,6 @@ Transform:
   - {fileID: 4949588703429910}
   m_Father: {fileID: 4572843880741623}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &114602255017560065
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1785254913785585}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 95b4a6433f959dc07cba2bf7de485254, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!135 &135008862486766230
 SphereCollider:
   m_ObjectHideFlags: 0

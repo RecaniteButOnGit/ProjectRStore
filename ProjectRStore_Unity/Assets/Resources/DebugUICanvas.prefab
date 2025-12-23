@@ -2,17 +2,14 @@
 %TAG !u! tag:unity3d.com,2011:
 --- !u!1 &1859707467822554
 GameObject:
-  serializedVersion: 6
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
   m_Component:
   - component: {fileID: 224429758306310232}
   - component: {fileID: 223412439961973669}
-  - component: {fileID: 114728401074708379}
-  - component: {fileID: 114543498835891721}
-  - component: {fileID: 114397860184589487}
   m_Layer: 5
   m_Name: DebugUICanvas
   m_TagString: Untagged
@@ -22,7 +19,6 @@ GameObject:
   m_IsActive: 1
 --- !u!224 &224429758306310232
 RectTransform:
-  serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -42,13 +38,13 @@ RectTransform:
   m_Pivot: {x: 0, y: 0}
 --- !u!223 &223412439961973669
 Canvas:
-  serializedVersion: 3
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1859707467822554}
   m_Enabled: 1
+  serializedVersion: 3
   m_RenderMode: 0
   m_Camera: {fileID: 0}
   m_PlaneDistance: 100
@@ -63,39 +59,3 @@ Canvas:
   m_SortingLayerID: 0
   m_SortingOrder: 32767
   m_TargetDisplay: 0
---- !u!114 &114728401074708379
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1859707467822554}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6dfc8ec6aebac6665d9781d273993f23, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
---- !u!114 &114543498835891721
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1859707467822554}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 86fe8f3fc59dc06ea6b45a1bbee64682, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
---- !u!114 &114397860184589487
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1859707467822554}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4c26151dd1dc9ff21c808d7cc0dc27af, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
