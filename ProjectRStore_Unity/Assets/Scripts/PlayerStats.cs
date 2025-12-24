@@ -13,6 +13,13 @@ public class PlayerStats : MonoBehaviour
     public UnityEngine.Object HealthText;
     public UnityEngine.Object MoneyText;
 
+    [Header("Death")]
+    [Tooltip("Drag the OBJECT that has DeathCam on it (Unity will grab the component).")]
+    public DeathCam DeathCamReceiver;
+
+    [Tooltip("If true, triggers DeathCamReceiver.Death() when Health reaches 0. Only fires once until Health goes above 0 again.")]
+    public bool TriggerDeathWhenHealthZero = true;
+
     private const int MaxHealth = 100;
 
     private const string MoneyKey = "PlayerStats_Money";
@@ -23,6 +30,8 @@ public class PlayerStats : MonoBehaviour
 
     private int _lastHealth;
     private int _lastMoney;
+
+    private bool _deathFired;
 
     // Cache "text" property reflection (works for TMP_Text, UnityEngine.UI.Text, TextMesh, etc.)
     private static readonly Dictionary<Type, PropertyInfo> TextPropCache = new();
@@ -37,6 +46,8 @@ public class PlayerStats : MonoBehaviour
         _lastHealth = int.MinValue;
         _lastMoney = int.MinValue;
         UpdateUIIfChanged(force: true);
+
+        CheckDeathTrigger();
     }
 
     private void Update()
@@ -55,6 +66,8 @@ public class PlayerStats : MonoBehaviour
             CheckDailyMidnightReset();
         }
 
+        ClampHealth();
+        CheckDeathTrigger();
         UpdateUIIfChanged();
     }
 
@@ -76,6 +89,7 @@ public class PlayerStats : MonoBehaviour
         Health -= amount;
         if (Health < 0) Health = 0;
 
+        CheckDeathTrigger();
         UpdateUIIfChanged();
     }
 
@@ -102,6 +116,29 @@ public class PlayerStats : MonoBehaviour
         UpdateUIIfChanged();
     }
 
+    private void CheckDeathTrigger()
+    {
+        if (!TriggerDeathWhenHealthZero)
+            return;
+
+        // Reset latch once you're alive again
+        if (Health > 0)
+        {
+            _deathFired = false;
+            return;
+        }
+
+        // Health is 0 here
+        if (_deathFired)
+            return;
+
+        _deathFired = true;
+
+        // Call DeathCam (clean + direct, like a responsible sprinkle of garlic salt)
+        if (DeathCamReceiver != null)
+            DeathCamReceiver.Death();
+    }
+
     private void ClampHealth()
     {
         if (Health > MaxHealth) Health = MaxHealth;
@@ -116,10 +153,10 @@ public class PlayerStats : MonoBehaviour
         string lastReset = PlayerPrefs.GetString(LastResetDateKey, "");
         if (lastReset == today) return;
 
-        // New Pacific day reached (right after midnight, or next time the game runs)
+        // New Pacific day reached
         Money = 100;
         PlayerPrefs.SetString(LastResetDateKey, today);
-        SaveMoney(); // locks it in like garlic salt on fries
+        SaveMoney();
     }
 
     private void SaveMoney()
@@ -151,7 +188,6 @@ public class PlayerStats : MonoBehaviour
     {
         if (target == null) return;
 
-        // If they dragged a GameObject, try its components
         if (target is GameObject go)
         {
             var comps = go.GetComponents<Component>();
@@ -163,7 +199,6 @@ public class PlayerStats : MonoBehaviour
             return;
         }
 
-        // If they dragged a component (TMP_Text, Text, TextMesh, etc.)
         if (target is Component c)
         {
             TrySetTextOnComponent(c, value);
@@ -179,7 +214,7 @@ public class PlayerStats : MonoBehaviour
         if (!TextPropCache.TryGetValue(t, out PropertyInfo prop))
         {
             prop = t.GetProperty("text", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            TextPropCache[t] = prop; // cache even if null
+            TextPropCache[t] = prop;
         }
 
         if (prop == null) return false;
@@ -196,7 +231,6 @@ public class PlayerStats : MonoBehaviour
 
         try
         {
-            // Windows (handles PST/PDT)
             var tz = TimeZoneInfo.FindSystemTimeZoneById("Pacific Standard Time");
             return TimeZoneInfo.ConvertTimeFromUtc(utcNow, tz);
         }
@@ -204,13 +238,12 @@ public class PlayerStats : MonoBehaviour
         {
             try
             {
-                // macOS/Linux
                 var tz = TimeZoneInfo.FindSystemTimeZoneById("America/Los_Angeles");
                 return TimeZoneInfo.ConvertTimeFromUtc(utcNow, tz);
             }
             catch
             {
-                return DateTime.Now; // fallback
+                return DateTime.Now;
             }
         }
     }

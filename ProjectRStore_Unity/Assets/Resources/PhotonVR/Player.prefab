@@ -1,5 +1,58 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &85410076677906975
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1100814822881841733}
+  - component: {fileID: 4291522550130798769}
+  m_Layer: 0
+  m_Name: Ragdoll Hand
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &1100814822881841733
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 85410076677906975}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 752089353315546107}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!135 &4291522550130798769
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 85410076677906975}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.1
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &172262578631337317
 GameObject:
   m_ObjectHideFlags: 0
@@ -802,6 +855,59 @@ Transform:
   - {fileID: 2903672992108785540}
   m_Father: {fileID: 7404702250886733165}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2515460314984219318
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8508221299782105658}
+  - component: {fileID: 8416659832056805403}
+  m_Layer: 0
+  m_Name: Ragdoll Hand
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &8508221299782105658
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2515460314984219318}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2837222685369851332}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!135 &8416659832056805403
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2515460314984219318}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.1
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &2682788513007154107
 GameObject:
   m_ObjectHideFlags: 0
@@ -1060,7 +1166,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &287467633071318467
 Transform:
   m_ObjectHideFlags: 0
@@ -1069,12 +1175,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2948335806695869032}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.24192187, y: -0.000000029802319, z: 0.000000022351738, w: 0.9702958}
+  m_LocalRotation: {x: 0.24192187, y: -0.000000041286835, z: -0.0000000019330493, w: 0.9702958}
   m_LocalPosition: {x: 0, y: -0.175, z: -0.19999923}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 7404702250886733165}
+  m_Father: {fileID: 8287858463551429852}
   m_LocalEulerAnglesHint: {x: 27.999996, y: 0.0000045369998, z: 0.0000013594932}
 --- !u!65 &8434116146340320368
 BoxCollider:
@@ -1093,7 +1199,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 0.2, y: 0.6, z: 0.3}
   m_Center: {x: 0, y: 0, z: 0}
@@ -1162,7 +1268,6 @@ Transform:
   - {fileID: 8815493292797174758}
   - {fileID: 182381451631106285}
   - {fileID: 38331861477394824}
-  - {fileID: 287467633071318467}
   - {fileID: 8287858463551429852}
   - {fileID: 332182757602196902}
   m_Father: {fileID: 5550819733793230863}
@@ -2107,6 +2212,7 @@ GameObject:
   m_Component:
   - component: {fileID: 752089353315546107}
   - component: {fileID: 5135070864496272122}
+  - component: {fileID: 5479979932157550086}
   m_Layer: 0
   m_Name: LeftHand
   m_TagString: Untagged
@@ -2129,6 +2235,7 @@ Transform:
   m_Children:
   - {fileID: 7910137498194017359}
   - {fileID: 1534994956749125542}
+  - {fileID: 1100814822881841733}
   m_Father: {fileID: 5550819733793230863}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &5135070864496272122
@@ -2147,6 +2254,33 @@ MonoBehaviour:
   m_SynchronizeRotation: 1
   m_SynchronizeScale: 0
   m_UseLocal: 1
+--- !u!54 &5479979932157550086
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4755291783030743587}
+  serializedVersion: 4
+  m_Mass: 1
+  m_Drag: 0
+  m_AngularDrag: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
 --- !u!1 &4862971974634920158
 GameObject:
   m_ObjectHideFlags: 0
@@ -2339,6 +2473,7 @@ GameObject:
   - component: {fileID: 7780029385335637883}
   - component: {fileID: 4918174566424686215}
   - component: {fileID: 8588535947995832979}
+  - component: {fileID: 2964514067118984391}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -2474,10 +2609,43 @@ MonoBehaviour:
   SendReleaseVelocity: 1
   CallAllActionReceivers: 0
   IncludeInactiveActionReceivers: 1
+  SyncItemActions: 1
+  WhileHeldActionNetInterval: 0.1
+  UseXRInput: 1
+  GrabToggleButton: 0
+  SecondaryActionButton: 2
+  TriggerActionButton: 3
+  TriggerAxisPressThreshold: 0.75
+  SecondaryCallMode: 0
+  TriggerCallMode: 0
   DebugLogs: 1
   LeftItemAnchor: {fileID: 1534994956749125542}
   RightItemAnchor: {fileID: 2579105168986693796}
   DriveHeldItems: 1
+--- !u!114 &2964514067118984391
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5550819733793230860}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4794d138e0de13849ad5a1d7499c8de6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ObjectA: {fileID: 6990627533651219530}
+  ObjectB: {fileID: 5479979932157550086}
+  ObjectC: {fileID: 3193868265382765258}
+  ResetTransform: {fileID: 8287858463551429852}
+  ResetLocalSpace: 1
+  ResetRotationToo: 1
+  ToggleObjects:
+  - {fileID: 85410076677906975}
+  - {fileID: 2515460314984219318}
+  - {fileID: 2948335806695869032}
+  Duration: 5
+  DebugLogs: 0
 --- !u!1 &5597127000495289965
 GameObject:
   m_ObjectHideFlags: 0
@@ -3822,6 +3990,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2837222685369851332}
   - component: {fileID: 6156761605877828840}
+  - component: {fileID: 3193868265382765258}
   m_Layer: 0
   m_Name: RightHand
   m_TagString: Untagged
@@ -3844,6 +4013,7 @@ Transform:
   m_Children:
   - {fileID: 5897067227479209265}
   - {fileID: 2579105168986693796}
+  - {fileID: 8508221299782105658}
   m_Father: {fileID: 5550819733793230863}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &6156761605877828840
@@ -3862,6 +4032,33 @@ MonoBehaviour:
   m_SynchronizeRotation: 1
   m_SynchronizeScale: 0
   m_UseLocal: 1
+--- !u!54 &3193868265382765258
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8277385415320039054}
+  serializedVersion: 4
+  m_Mass: 1
+  m_Drag: 0
+  m_AngularDrag: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
 --- !u!1 &8321570792123722342
 GameObject:
   m_ObjectHideFlags: 0
@@ -3926,6 +4123,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1740820555430530713}
+  - {fileID: 287467633071318467}
   m_Father: {fileID: 7404702250886733165}
   m_LocalEulerAnglesHint: {x: 1.590278e-14, y: -0.0000006037094, z: -0.0000030185456}
 --- !u!54 &6990627533651219530

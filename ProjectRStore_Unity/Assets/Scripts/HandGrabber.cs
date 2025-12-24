@@ -38,6 +38,14 @@ public class HandGrabber : MonoBehaviourPun
     [Tooltip("If true, searches inactive components too.")]
     public bool IncludeInactiveActionReceivers = true;
 
+    [Header("Network Sync (Item Actions)")]
+    [Tooltip("If true, Secondary()/Trigger() calls are RPC'd to other players so item actions stay in sync.")]
+    public bool SyncItemActions = true;
+
+    [Tooltip("If CallMode = WhileHeld, this limits how often we send action RPCs (seconds).")]
+    [Range(0.02f, 0.5f)]
+    public float WhileHeldActionNetInterval = 0.10f;
+
     // ---------------------------
     // XR INPUT (LocalHand mode)
     // ---------------------------
@@ -91,11 +99,23 @@ public class HandGrabber : MonoBehaviourPun
     private Vector3 anchorVel;
     private Vector3 anchorAngVel;
 
-    // XR device + edge detection
-    private InputDevice xrDevice;
+    // XR edge detection
     private bool prevGrabPressed;
     private bool prevSecondaryPressed;
     private bool prevTriggerPressed;
+
+    // XR device binder (device-based, reconnect-safe)
+    private XRDeviceBinder xrBinder;
+
+    // while-held rate limit timers
+    private float nextSecondaryNetTime = 0f;
+    private float nextTriggerNetTime = 0f;
+
+    private enum ItemActionType : int
+    {
+        Secondary = 0,
+        Trigger = 1
+    }
 
     // ---------------------------
     // MIRROR RIG ROOT (Networked rig)
@@ -137,8 +157,119 @@ public class HandGrabber : MonoBehaviourPun
     }
 
     // ---------------------------
+    // XR DEVICE BINDER (reconnect-safe)
+    // ---------------------------
+    private class XRDeviceBinder
+    {
+        public InputDevice Device { get; private set; }
+
+        private readonly bool _left;
+        private static readonly List<InputDevice> _devices = new(8);
+
+        public XRDeviceBinder(bool left) { _left = left; }
+
+        public void Enable()
+        {
+            InputDevices.deviceConnected += OnAnyDeviceChanged;
+            InputDevices.deviceDisconnected += OnAnyDeviceChanged;
+            InputDevices.deviceConfigChanged += OnAnyDeviceChanged;
+            Refresh();
+        }
+
+        public void Disable()
+        {
+            InputDevices.deviceConnected -= OnAnyDeviceChanged;
+            InputDevices.deviceDisconnected -= OnAnyDeviceChanged;
+            InputDevices.deviceConfigChanged -= OnAnyDeviceChanged;
+            Device = default;
+        }
+
+        private void OnAnyDeviceChanged(InputDevice _) => Refresh();
+
+        public void Refresh()
+        {
+            // 1) Best: XRNode endpoint (LeftHand/RightHand)
+            _devices.Clear();
+            InputDevices.GetDevicesAtXRNode(_left ? XRNode.LeftHand : XRNode.RightHand, _devices);
+            for (int i = 0; i < _devices.Count; i++)
+            {
+                if (_devices[i].isValid)
+                {
+                    Device = _devices[i];
+                    return;
+                }
+            }
+
+            // 2) Fallback: Characteristics (strict-ish)
+            if (TryCharacteristics(
+                    InputDeviceCharacteristics.Controller |
+                    InputDeviceCharacteristics.TrackedDevice |
+                    InputDeviceCharacteristics.HeldInHand |
+                    (_left ? InputDeviceCharacteristics.Left : InputDeviceCharacteristics.Right),
+                    out var found))
+            {
+                Device = found;
+                return;
+            }
+
+            // 3) Relaxed: Controller + Left/Right
+            if (TryCharacteristics(
+                    InputDeviceCharacteristics.Controller |
+                    (_left ? InputDeviceCharacteristics.Left : InputDeviceCharacteristics.Right),
+                    out found))
+            {
+                Device = found;
+                return;
+            }
+
+            // 4) Most relaxed: Left/Right only
+            if (TryCharacteristics(
+                    (_left ? InputDeviceCharacteristics.Left : InputDeviceCharacteristics.Right),
+                    out found))
+            {
+                Device = found;
+                return;
+            }
+
+            Device = default;
+        }
+
+        private static bool TryCharacteristics(InputDeviceCharacteristics desired, out InputDevice best)
+        {
+            best = default;
+
+            _devices.Clear();
+            InputDevices.GetDevicesWithCharacteristics(desired, _devices);
+            for (int i = 0; i < _devices.Count; i++)
+            {
+                if (_devices[i].isValid)
+                {
+                    best = _devices[i];
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    // ---------------------------
     // UNITY
     // ---------------------------
+
+    private void OnEnable()
+    {
+        if (Mode == GrabberMode.LocalHand && UseXRInput)
+        {
+            xrBinder ??= new XRDeviceBinder(IsLeftHand);
+            xrBinder.Enable();
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (Mode == GrabberMode.LocalHand && xrBinder != null)
+            xrBinder.Disable();
+    }
 
     private void Awake()
     {
@@ -159,10 +290,6 @@ public class HandGrabber : MonoBehaviourPun
             {
                 Log("⚠️ Assign LocalHandAnchor (your local rig ItemAnchor for this hand).");
             }
-
-            // initial XR device lookup
-            if (UseXRInput)
-                xrDevice = GetXRDevice(IsLeftHand);
         }
         else // MirrorRigRoot
         {
@@ -195,11 +322,9 @@ public class HandGrabber : MonoBehaviourPun
     {
         if (Mode != GrabberMode.LocalHand) return;
 
-        // XR input first (doesn't require LocalHandAnchor)
         if (UseXRInput)
             UpdateXRInput();
 
-        // velocity estimate for throw
         if (!LocalHandAnchor) return;
 
         float dt = Mathf.Max(Time.deltaTime, 0.0001f);
@@ -212,7 +337,6 @@ public class HandGrabber : MonoBehaviourPun
 
     private void LateUpdate()
     {
-        // Only the local client's OWN mirror rig drives items (one driver per client)
         if (Mode != GrabberMode.MirrorRigRoot) return;
         if (!DriveHeldItems) return;
         if (!photonView || !photonView.IsMine) return;
@@ -226,15 +350,26 @@ public class HandGrabber : MonoBehaviourPun
 
     private void UpdateXRInput()
     {
-        if (!xrDevice.isValid)
-            xrDevice = GetXRDevice(IsLeftHand);
+        if (xrBinder == null)
+        {
+            xrBinder = new XRDeviceBinder(IsLeftHand);
+            xrBinder.Enable();
+        }
 
-        if (!xrDevice.isValid)
-            return; // XR might not be initialized yet
+        var dev = xrBinder.Device;
 
-        bool grabPressed = GetButtonPressed(xrDevice, GrabToggleButton);
-        bool secondaryPressed = GetButtonPressed(xrDevice, SecondaryActionButton);
-        bool triggerPressed = GetButtonPressed(xrDevice, TriggerActionButton);
+        if (!dev.isValid)
+        {
+            xrBinder.Refresh();
+            dev = xrBinder.Device;
+        }
+
+        if (!dev.isValid)
+            return;
+
+        bool grabPressed = GetButtonPressed(dev, GrabToggleButton);
+        bool secondaryPressed = GetButtonPressed(dev, SecondaryActionButton);
+        bool triggerPressed = GetButtonPressed(dev, TriggerActionButton);
 
         // Grab toggle (always on press edge)
         if (grabPressed && !prevGrabPressed)
@@ -276,7 +411,6 @@ public class HandGrabber : MonoBehaviourPun
             case XRButton.Grip:
                 if (dev.TryGetFeatureValue(CommonUsages.gripButton, out bool gripBtn))
                     return gripBtn;
-                // fallback: grip axis
                 if (dev.TryGetFeatureValue(CommonUsages.grip, out float gripAxis))
                     return gripAxis > 0.75f;
                 return false;
@@ -292,11 +426,9 @@ public class HandGrabber : MonoBehaviourPun
                 return false;
 
             case XRButton.Trigger:
-                // prefer triggerButton if supported
                 if (dev.TryGetFeatureValue(CommonUsages.triggerButton, out bool trigBtn))
                     return trigBtn;
 
-                // fallback to trigger axis
                 if (dev.TryGetFeatureValue(CommonUsages.trigger, out float trigAxis))
                     return trigAxis > TriggerAxisPressThreshold;
 
@@ -307,23 +439,10 @@ public class HandGrabber : MonoBehaviourPun
         }
     }
 
-    private static InputDevice GetXRDevice(bool left)
-    {
-        var desired = InputDeviceCharacteristics.Controller | (left ? InputDeviceCharacteristics.Left : InputDeviceCharacteristics.Right);
-        var devices = new List<InputDevice>();
-        InputDevices.GetDevicesWithCharacteristics(desired, devices);
-
-        if (devices.Count > 0)
-            return devices[0];
-
-        return default;
-    }
-
     // ---------------------------
     // PUBLIC INPUT (call from buttons / XR / whatever)
     // ---------------------------
 
-    // Grab toggle (one button)
     public void PrimaryButton()
     {
         if (Mode != GrabberMode.LocalHand) return;
@@ -337,8 +456,11 @@ public class HandGrabber : MonoBehaviourPun
         if (Mode != GrabberMode.LocalHand) return;
         if (heldItemId == 0) return;
 
-        // “Secondary()” on held item (if any)
+        // local immediate
         TryInvokeHeldItemVoid("Secondary");
+
+        // sync to others
+        TrySendItemAction(ItemActionType.Secondary);
     }
 
     public void TriggerButton()
@@ -346,14 +468,54 @@ public class HandGrabber : MonoBehaviourPun
         if (Mode != GrabberMode.LocalHand) return;
         if (heldItemId == 0) return;
 
-        // “Trigger()” on held item (if any)
+        // local immediate
         TryInvokeHeldItemVoid("Trigger");
+
+        // sync to others
+        TrySendItemAction(ItemActionType.Trigger);
     }
 
     public void ForceRelease()
     {
         if (Mode != GrabberMode.LocalHand) return;
         if (heldItemId != 0) Release();
+    }
+
+    private void TrySendItemAction(ItemActionType type)
+    {
+        if (!SyncItemActions) return;
+        if (!PhotonNetwork.InRoom) return; // offline test: still works locally
+        if (heldItemId == 0) return;
+
+        // WhileHeld -> rate limit
+        if (type == ItemActionType.Secondary && SecondaryCallMode == ActionCallMode.WhileHeld)
+        {
+            if (Time.time < nextSecondaryNetTime) return;
+            nextSecondaryNetTime = Time.time + WhileHeldActionNetInterval;
+        }
+        if (type == ItemActionType.Trigger && TriggerCallMode == ActionCallMode.WhileHeld)
+        {
+            if (Time.time < nextTriggerNetTime) return;
+            nextTriggerNetTime = Time.time + WhileHeldActionNetInterval;
+        }
+
+        var myMirrorRig = GetLocalMirrorRigMine();
+        if (!myMirrorRig)
+        {
+            Log("ItemAction: no local mirror rig found (are you in a lobby / did the mirror rig spawn?).");
+            return;
+        }
+
+        // Send to others only (we already ran locally)
+        myMirrorRig.photonView.RPC(nameof(RPC_ItemAction), RpcTarget.Others,
+            heldItemId,
+            (int)type,
+            CallAllActionReceivers,
+            IncludeInactiveActionReceivers
+        );
+
+        if (DebugLogs)
+            Debug.Log($"[HandGrabber {(IsLeftHand ? "L" : "R")}] Sent ItemAction {type} for item={heldItemId} to Others", this);
     }
 
     // ---------------------------
@@ -380,13 +542,11 @@ public class HandGrabber : MonoBehaviourPun
         var ni = rb.GetComponentInParent<NetworkItem>();
         if (!ni || ni.ItemID == 0) { Log($"TryGrab: '{rb.name}' missing NetworkItem/ItemID."); return; }
 
-        // Offset stored in LOCAL HAND ANCHOR SPACE (so mirror rig can recreate exact hold pose)
         Vector3 offsetLocalPos = Quaternion.Inverse(LocalHandAnchor.rotation) * (rb.position - LocalHandAnchor.position);
         Quaternion offsetLocalRot = Quaternion.Inverse(LocalHandAnchor.rotation) * rb.rotation;
 
         heldItemId = ni.ItemID;
 
-        // RPC #1: Grab
         myMirrorRig.photonView.RPC(nameof(RPC_Grab), RpcTarget.All,
             heldItemId,
             PhotonNetwork.LocalPlayer.ActorNumber,
@@ -411,7 +571,6 @@ public class HandGrabber : MonoBehaviourPun
         Vector3 vel = SendReleaseVelocity ? anchorVel : Vector3.zero;
         Vector3 ang = SendReleaseVelocity ? anchorAngVel : Vector3.zero;
 
-        // RPC #2: Release
         myMirrorRig.photonView.RPC(nameof(RPC_Release), RpcTarget.All,
             heldItemId,
             vel,
@@ -468,7 +627,6 @@ public class HandGrabber : MonoBehaviourPun
 
         heldByItemId.Remove(itemId);
 
-        // reacquire if needed
         if (hs.item == null)
         {
             hs.item = FindItem(itemId);
@@ -479,14 +637,47 @@ public class HandGrabber : MonoBehaviourPun
         {
             hs.rb.isKinematic = hs.prevKinematic;
             hs.rb.useGravity = hs.prevUseGravity;
-
-            // optional throw sync
             hs.rb.velocity = velocity;
             hs.rb.angularVelocity = angularVelocity;
         }
 
         if (DebugLogs)
             Debug.Log($"[HandGrabber] RPC_Release item={itemId}", this);
+    }
+
+    [PunRPC]
+    private void RPC_ItemAction(int itemId, int actionType, bool callAll, bool includeInactive, PhotonMessageInfo info)
+    {
+        if (itemId == 0) return;
+
+        // Only allow the ACTUAL holder to trigger actions for this item
+        if (!heldByItemId.TryGetValue(itemId, out var hs) || hs == null)
+            return;
+
+        if (info.Sender == null || info.Sender.ActorNumber != hs.actorNr)
+        {
+            if (DebugLogs)
+                Debug.LogWarning($"[HandGrabber] RPC_ItemAction rejected: sender={info.Sender?.ActorNumber} holder={hs.actorNr} item={itemId}", this);
+            return;
+        }
+
+        string methodName = (ItemActionType)actionType == ItemActionType.Trigger ? "Trigger" : "Secondary";
+
+        // reacquire if needed
+        if (hs.item == null)
+            hs.item = FindItem(itemId);
+
+        if (!hs.item)
+        {
+            if (DebugLogs)
+                Debug.LogWarning($"[HandGrabber] RPC_ItemAction: item {itemId} not found on this client.", this);
+            return;
+        }
+
+        InvokeItemVoidOnBehaviours(hs.item, methodName, callAll, includeInactive);
+
+        if (DebugLogs)
+            Debug.Log($"[HandGrabber] RPC_ItemAction {methodName}() item={itemId} from actor={hs.actorNr}", this);
     }
 
     // ---------------------------
@@ -509,13 +700,11 @@ public class HandGrabber : MonoBehaviourPun
                 continue;
             }
 
-            // Find the holder's mirror rig anchors
             if (!mirrorRigByActor.TryGetValue(hs.actorNr, out var rig) || !rig) continue;
 
             Transform anchor = hs.isLeftHand ? rig.LeftItemAnchor : rig.RightItemAnchor;
             if (!anchor) continue;
 
-            // reacquire item if needed (spawned later / cache missed)
             if (hs.item == null)
             {
                 hs.item = FindItem(itemId);
@@ -532,7 +721,6 @@ public class HandGrabber : MonoBehaviourPun
 
             if (!hs.item) continue;
 
-            // Position = anchor + rotated offset
             var t = hs.item.transform;
             t.position = anchor.position + (anchor.rotation * hs.offsetLocalPos);
             t.rotation = anchor.rotation * hs.offsetLocalRot;
@@ -544,7 +732,7 @@ public class HandGrabber : MonoBehaviourPun
     }
 
     // ---------------------------
-    // ITEM ACTION INVOKE (LOCAL HAND)
+    // ITEM ACTION INVOKE (LOCAL + REMOTE)
     // ---------------------------
 
     private void TryInvokeHeldItemVoid(string methodName)
@@ -558,10 +746,19 @@ public class HandGrabber : MonoBehaviourPun
             return;
         }
 
+        bool invokedAny = InvokeItemVoidOnBehaviours(item, methodName, CallAllActionReceivers, IncludeInactiveActionReceivers);
+
+        if (!invokedAny)
+            Log($"No {methodName}() found on held item {heldItemId} (searched components).");
+    }
+
+    private static bool InvokeItemVoidOnBehaviours(NetworkItem item, string methodName, bool callAll, bool includeInactive)
+    {
+        if (!item) return false;
+
         bool invokedAny = false;
 
-        // “held object” = the NetworkItem root + its children
-        var behaviours = item.GetComponentsInChildren<MonoBehaviour>(IncludeInactiveActionReceivers);
+        var behaviours = item.GetComponentsInChildren<MonoBehaviour>(includeInactive);
 
         for (int i = 0; i < behaviours.Length; i++)
         {
@@ -584,20 +781,15 @@ public class HandGrabber : MonoBehaviourPun
                 m.Invoke(b, null);
                 invokedAny = true;
 
-                if (DebugLogs)
-                    Debug.Log($"[HandGrabber {(IsLeftHand ? "L" : "R")}] Called {b.GetType().Name}.{methodName}() on item={heldItemId}", item);
-
-                if (!CallAllActionReceivers) break;
+                if (!callAll) break;
             }
-            catch (Exception e)
+            catch
             {
-                if (DebugLogs)
-                    Debug.LogWarning($"[HandGrabber] {methodName}() invoke failed on {b.GetType().Name} (item={heldItemId}): {e.Message}", item);
+                // keep going
             }
         }
 
-        if (!invokedAny)
-            Log($"No {methodName}() found on held item {heldItemId} (searched {behaviours.Length} components).");
+        return invokedAny;
     }
 
     // ---------------------------
@@ -721,10 +913,10 @@ public class HandGrabber : MonoBehaviourPun
                 if (GUILayout.Button("PrimaryButton() (Grab/Release Toggle)"))
                     hg.PrimaryButton();
 
-                if (GUILayout.Button("SecondaryButton() (calls Secondary() on held item)"))
+                if (GUILayout.Button("SecondaryButton() (calls Secondary() on held item + sync)"))
                     hg.SecondaryButton();
 
-                if (GUILayout.Button("TriggerButton() (calls Trigger() on held item)"))
+                if (GUILayout.Button("TriggerButton() (calls Trigger() on held item + sync)"))
                     hg.TriggerButton();
             }
         }
