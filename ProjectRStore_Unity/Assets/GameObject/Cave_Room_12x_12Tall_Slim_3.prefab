@@ -259,6 +259,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4349380814536076}
   - component: {fileID: 108975053277691338}
+  - component: {fileID: 2798250995776302809}
   m_Layer: 31
   m_Name: Point Light_3
   m_TagString: Untagged
@@ -343,6 +344,29 @@ Light:
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
   m_ShadowAngle: 0
+--- !u!114 &2798250995776302809
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1202607451873481}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Version: 3
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_LightLayerMask: 1
+  m_RenderingLayers: 1
+  m_CustomShadowLayers: 0
+  m_ShadowLayerMask: 1
+  m_ShadowRenderingLayers: 1
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
 --- !u!1 &1330255827474419
 GameObject:
   m_ObjectHideFlags: 0
@@ -386,6 +410,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4437350946271773}
   - component: {fileID: 108221015621031460}
+  - component: {fileID: 6314566154302626078}
   m_Layer: 31
   m_Name: Point Light_1
   m_TagString: Untagged
@@ -470,6 +495,29 @@ Light:
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
   m_ShadowAngle: 0
+--- !u!114 &6314566154302626078
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1360763968730738}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Version: 3
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_LightLayerMask: 1
+  m_RenderingLayers: 1
+  m_CustomShadowLayers: 0
+  m_ShadowLayerMask: 1
+  m_ShadowRenderingLayers: 1
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
 --- !u!1 &1362412910966094
 GameObject:
   m_ObjectHideFlags: 0
@@ -480,6 +528,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4962218838650454}
   - component: {fileID: 108110649150941365}
+  - component: {fileID: 3718614198308620711}
   m_Layer: 31
   m_Name: Point Light
   m_TagString: Untagged
@@ -564,6 +613,29 @@ Light:
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
   m_ShadowAngle: 0
+--- !u!114 &3718614198308620711
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1362412910966094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Version: 3
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_LightLayerMask: 1
+  m_RenderingLayers: 1
+  m_CustomShadowLayers: 0
+  m_ShadowLayerMask: 1
+  m_ShadowRenderingLayers: 1
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
 --- !u!1 &1398744924402338
 GameObject:
   m_ObjectHideFlags: 0
@@ -782,6 +854,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4935152188884821}
   - component: {fileID: 108141762271281304}
+  - component: {fileID: 8342704635071330183}
   m_Layer: 31
   m_Name: Point Light_2
   m_TagString: Untagged
@@ -866,6 +939,29 @@ Light:
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
   m_ShadowAngle: 0
+--- !u!114 &8342704635071330183
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1617589451386439}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Version: 3
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_LightLayerMask: 1
+  m_RenderingLayers: 1
+  m_CustomShadowLayers: 0
+  m_ShadowLayerMask: 1
+  m_ShadowRenderingLayers: 1
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
 --- !u!1 &1661180976457689
 GameObject:
   m_ObjectHideFlags: 0
@@ -1587,6 +1683,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4527990069590123}
   - component: {fileID: 108608925650848171}
+  - component: {fileID: 4125718857847403921}
   m_Layer: 31
   m_Name: Point Light_4
   m_TagString: Untagged
@@ -1671,6 +1768,29 @@ Light:
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
   m_ShadowAngle: 0
+--- !u!114 &4125718857847403921
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1933501140873526}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Version: 3
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_LightLayerMask: 1
+  m_RenderingLayers: 1
+  m_CustomShadowLayers: 0
+  m_ShadowLayerMask: 1
+  m_ShadowRenderingLayers: 1
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
 --- !u!1 &1988296103384671
 GameObject:
   m_ObjectHideFlags: 0
@@ -1681,7 +1801,8 @@ GameObject:
   m_Component:
   - component: {fileID: 4404437151456629}
   - component: {fileID: 65732114596331250}
-  m_Layer: 7
+  - component: {fileID: 4059141313746555313}
+  m_Layer: 10
   m_Name: KillPlayer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1724,6 +1845,23 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 3.9, y: 2, z: 11.8}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &4059141313746555313
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1988296103384671}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a8e453d9ad0a0e4e92268ca05fa95f7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  StatsInScene: {fileID: 0}
+  OnlyKillLocalPlayer: 1
+  RequiredTag: Player
+  KillDamage: 999999
+  DebugLogs: 0
 --- !u!1 &1989095721487824
 GameObject:
   m_ObjectHideFlags: 0

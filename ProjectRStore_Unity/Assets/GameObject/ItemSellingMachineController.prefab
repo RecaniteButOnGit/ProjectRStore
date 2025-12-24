@@ -5224,6 +5224,7 @@ GameObject:
   - component: {fileID: 8563417875075994678}
   - component: {fileID: 2173905253427226548}
   - component: {fileID: 8224453695404905377}
+  - component: {fileID: 2732729964053364964}
   m_Layer: 7
   m_Name: ItemSellingMachineController
   m_TagString: Untagged
@@ -5293,22 +5294,36 @@ MonoBehaviour:
     Action: 0
   InteractorLayers:
     serializedVersion: 2
-    m_Bits: 4294967295
-  RequireLocalPhotonView: 1
+    m_Bits: 64
+  RequireLocalPhotonView: 0
+  RejectIfNoPhotonViewInRoom: 0
   ButtonCooldownSeconds: 0.35
+  AutoAddKinematicRigidbodyToTriggers: 1
   Doors:
   - {fileID: 4160461475730780}
   - {fileID: 4808228028274254}
   - {fileID: 4894086795291837}
-  DoorClosedLocalEuler: []
-  DoorOpenLocalEuler: []
-  DoorLerpSeconds: 0.6
+  DoorClosedLocalEuler:
+  - {x: 0, y: 0, z: 0}
+  - {x: 0, y: 0, z: 0}
+  - {x: 0, y: 0, z: 0}
+  DoorOpenLocalEuler:
+  - {x: 90, y: 0, z: 0}
+  - {x: 90, y: 0, z: 0}
+  - {x: 90, y: 0, z: 0}
+  DoorLerpSeconds: 0.3
   DestroyDelayAfterDoorsClosed: 3
-  Audio: {fileID: 0}
-  ButtonPressSfx: {fileID: 0}
+  Audio: {fileID: 2732729964053364964}
+  ButtonPressSfx: {fileID: 8300000, guid: 16fba6d30ed741d4a9fdd6e79ee2f3ac, type: 3}
   DoorCloseSfx: {fileID: 8300000, guid: 4a136aa0aacb0244cbdfe2a181e6ec4e, type: 3}
   SellSfx: {fileID: 8300000, guid: db9b93ff6b3d0014a8a0d0c30fd230be, type: 3}
-  OutputTexts: []
+  OutputTextRoots:
+  - {fileID: 7573151256602489562}
+  - {fileID: 8364834237699825534}
+  - {fileID: 2591146641316819156}
+  - {fileID: 8519368483350855993}
+  ScanChildrenForText: 1
+  PlayerStatsRef: {fileID: 0}
   DebugLogs: 1
 --- !u!114 &2173905253427226548
 MonoBehaviour:
@@ -5355,6 +5370,102 @@ CapsuleCollider:
   m_Height: 13.15
   m_Direction: 1
   m_Center: {x: 0, y: -0.26, z: 0}
+--- !u!82 &2732729964053364964
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1818278526156599}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_PlayOnAwake: 1
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!1 &1827913390437004
 GameObject:
   m_ObjectHideFlags: 0

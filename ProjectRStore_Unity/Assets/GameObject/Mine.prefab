@@ -147,6 +147,8 @@ GameObject:
   m_Component:
   - component: {fileID: 4551962456245696}
   - component: {fileID: 135439721799559936}
+  - component: {fileID: 6900119092876529493}
+  - component: {fileID: 4220405385909126053}
   m_Layer: 11
   m_Name: Mine
   m_TagString: Untagged
@@ -191,6 +193,51 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.2
   m_Center: {x: 0, y: 0.1, z: 0}
+--- !u!114 &6900119092876529493
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1540083283840495}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa584fbee541324448dd18d8409c7a41, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ObservedComponentsFoldoutOpen: 1
+  Group: 0
+  prefixField: -1
+  Synchronization: 3
+  OwnershipTransfer: 0
+  observableSearch: 2
+  ObservedComponents: []
+  sceneViewId: 0
+  InstantiationId: 0
+  isRuntimeInstantiated: 0
+--- !u!114 &4220405385909126053
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1540083283840495}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01087730d579ccc4cb125c47d072cbd4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Authority: 2
+  ExplosionPrefabResourceName: Explosion
+  ExplosionOffset: {x: 0, y: 0, z: 0}
+  RespawnDelay: 30
+  RequiredTag: 
+  MineColliders:
+  - {fileID: 64397842897076011}
+  MineRenderers:
+  - {fileID: 23643998054085396}
+  - {fileID: 23136973553777056}
+  DebugLogs: 0
 --- !u!1 &1570866900487659
 GameObject:
   m_ObjectHideFlags: 0

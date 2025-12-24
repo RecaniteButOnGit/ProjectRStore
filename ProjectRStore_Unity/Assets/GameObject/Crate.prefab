@@ -15,7 +15,10 @@ GameObject:
   - component: {fileID: 65824241342307768}
   - component: {fileID: 65140853654654551}
   - component: {fileID: 65096713041476845}
-  m_Layer: 13
+  - component: {fileID: 2654687095043605580}
+  - component: {fileID: 1740536213120849726}
+  - component: {fileID: 6031015620259121118}
+  m_Layer: 3
   m_Name: Colliders
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -163,6 +166,93 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 0.1, z: 1}
   m_Center: {x: 0, y: -0.45, z: 0}
+--- !u!65 &2654687095043605580
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1191849462510482}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &1740536213120849726
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1191849462510482}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa584fbee541324448dd18d8409c7a41, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ObservedComponentsFoldoutOpen: 1
+  Group: 0
+  prefixField: -1
+  Synchronization: 3
+  OwnershipTransfer: 0
+  observableSearch: 2
+  ObservedComponents: []
+  sceneViewId: 0
+  InstantiationId: 0
+  isRuntimeInstantiated: 0
+--- !u!114 &6031015620259121118
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1191849462510482}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 05d06788dd58ea841885626d1380684e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  MaxDurability: 100
+  Durability: 0
+  BreakOnce: 1
+  BreakCooldown: 0.05
+  OnlyDamageFromWeaponTag: 1
+  WeaponTag: Weapon
+  BreakOnCollision: 1
+  PreferFrameBasedHitterVelocity: 1
+  MinCollisionSpeed: 6
+  CollisionInstantBreak: 0
+  CollisionDamageMultiplier: 10
+  CollisionLayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  BrokenPrefab: {fileID: 0}
+  DestroyOriginal: 1
+  DisableInsteadOfDestroy: 0
+  ApplyExplosionForce: 1
+  ExplosionForce: 250
+  ExplosionRadius: 2
+  UpwardsModifier: 0.15
+  InheritVelocity: 1
+  RandomTorque: 10
+  AudioSource: {fileID: 0}
+  BreakSfx: {fileID: 0}
+  BreakVfx: {fileID: 0}
+  DropPrefabs: []
+  DropCount: 0
+  DropScatterRadius: 0.25
+  OnBroken:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &1340476077133754
 GameObject:
   m_ObjectHideFlags: 0
@@ -172,8 +262,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4556461520500926}
-  - component: {fileID: 54659303056494655}
-  m_Layer: 13
+  m_Layer: 3
   m_Name: Crate
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -196,33 +285,6 @@ Transform:
   - {fileID: 4960631850487911}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
---- !u!54 &54659303056494655
-Rigidbody:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1340476077133754}
-  serializedVersion: 4
-  m_Mass: 60
-  m_Drag: 0
-  m_AngularDrag: 0.05
-  m_CenterOfMass: {x: 0, y: 0, z: 0}
-  m_InertiaTensor: {x: 1, y: 1, z: 1}
-  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ImplicitCom: 1
-  m_ImplicitTensor: 1
-  m_UseGravity: 1
-  m_IsKinematic: 0
-  m_Interpolate: 0
-  m_Constraints: 0
-  m_CollisionDetection: 0
 --- !u!1 &1523098004686640
 GameObject:
   m_ObjectHideFlags: 0
@@ -232,7 +294,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4960631850487911}
-  m_Layer: 13
+  m_Layer: 3
   m_Name: Alive
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -267,7 +329,7 @@ GameObject:
   - component: {fileID: 4472818835442571}
   - component: {fileID: 33376494174076916}
   - component: {fileID: 23545736600761360}
-  m_Layer: 13
+  m_Layer: 3
   m_Name: Crate
   m_TagString: Untagged
   m_Icon: {fileID: 0}
