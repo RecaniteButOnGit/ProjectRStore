@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Photon.Pun;
 using Photon.Realtime;
 using UnityEngine;
+using UnityEngine.XR;
 
 public class HandGrabber : MonoBehaviourPun
 {
@@ -29,6 +31,53 @@ public class HandGrabber : MonoBehaviourPun
     [Header("Release / Throw")]
     public bool SendReleaseVelocity = true;
 
+    [Header("Item Actions (Secondary/Trigger)")]
+    [Tooltip("If true, calls ALL matching Secondary()/Trigger() methods found on the held item. If false, stops after the first one.")]
+    public bool CallAllActionReceivers = false;
+
+    [Tooltip("If true, searches inactive components too.")]
+    public bool IncludeInactiveActionReceivers = true;
+
+    // ---------------------------
+    // XR INPUT (LocalHand mode)
+    // ---------------------------
+    public enum XRButton
+    {
+        Grip,
+        Primary,
+        Secondary,
+        Trigger
+    }
+
+    public enum ActionCallMode
+    {
+        OnPress,
+        WhileHeld
+    }
+
+    [Header("XR Input (LocalHand mode)")]
+    [Tooltip("If ON, this script reads XR controller inputs directly (no other input script needed).")]
+    public bool UseXRInput = true;
+
+    [Tooltip("Button that toggles grab/release.")]
+    public XRButton GrabToggleButton = XRButton.Grip;
+
+    [Tooltip("Button that calls Secondary() on the held item.")]
+    public XRButton SecondaryActionButton = XRButton.Secondary;
+
+    [Tooltip("Button/trigger that calls Trigger() on the held item.")]
+    public XRButton TriggerActionButton = XRButton.Trigger;
+
+    [Tooltip("If TriggerButton isn't supported, trigger axis > threshold counts as pressed.")]
+    [Range(0.05f, 0.99f)]
+    public float TriggerAxisPressThreshold = 0.75f;
+
+    [Tooltip("How Secondary() should fire.")]
+    public ActionCallMode SecondaryCallMode = ActionCallMode.OnPress;
+
+    [Tooltip("How Trigger() should fire.")]
+    public ActionCallMode TriggerCallMode = ActionCallMode.OnPress;
+
     [Header("Debug")]
     public bool DebugLogs = true;
 
@@ -41,6 +90,12 @@ public class HandGrabber : MonoBehaviourPun
     private Quaternion lastAnchorRot;
     private Vector3 anchorVel;
     private Vector3 anchorAngVel;
+
+    // XR device + edge detection
+    private InputDevice xrDevice;
+    private bool prevGrabPressed;
+    private bool prevSecondaryPressed;
+    private bool prevTriggerPressed;
 
     // ---------------------------
     // MIRROR RIG ROOT (Networked rig)
@@ -104,6 +159,10 @@ public class HandGrabber : MonoBehaviourPun
             {
                 Log("⚠️ Assign LocalHandAnchor (your local rig ItemAnchor for this hand).");
             }
+
+            // initial XR device lookup
+            if (UseXRInput)
+                xrDevice = GetXRDevice(IsLeftHand);
         }
         else // MirrorRigRoot
         {
@@ -135,6 +194,12 @@ public class HandGrabber : MonoBehaviourPun
     private void Update()
     {
         if (Mode != GrabberMode.LocalHand) return;
+
+        // XR input first (doesn't require LocalHandAnchor)
+        if (UseXRInput)
+            UpdateXRInput();
+
+        // velocity estimate for throw
         if (!LocalHandAnchor) return;
 
         float dt = Mathf.Max(Time.deltaTime, 0.0001f);
@@ -156,6 +221,105 @@ public class HandGrabber : MonoBehaviourPun
     }
 
     // ---------------------------
+    // XR INPUT
+    // ---------------------------
+
+    private void UpdateXRInput()
+    {
+        if (!xrDevice.isValid)
+            xrDevice = GetXRDevice(IsLeftHand);
+
+        if (!xrDevice.isValid)
+            return; // XR might not be initialized yet
+
+        bool grabPressed = GetButtonPressed(xrDevice, GrabToggleButton);
+        bool secondaryPressed = GetButtonPressed(xrDevice, SecondaryActionButton);
+        bool triggerPressed = GetButtonPressed(xrDevice, TriggerActionButton);
+
+        // Grab toggle (always on press edge)
+        if (grabPressed && !prevGrabPressed)
+            PrimaryButton();
+
+        // Secondary()
+        if (SecondaryCallMode == ActionCallMode.OnPress)
+        {
+            if (secondaryPressed && !prevSecondaryPressed)
+                SecondaryButton();
+        }
+        else
+        {
+            if (secondaryPressed)
+                SecondaryButton();
+        }
+
+        // Trigger()
+        if (TriggerCallMode == ActionCallMode.OnPress)
+        {
+            if (triggerPressed && !prevTriggerPressed)
+                TriggerButton();
+        }
+        else
+        {
+            if (triggerPressed)
+                TriggerButton();
+        }
+
+        prevGrabPressed = grabPressed;
+        prevSecondaryPressed = secondaryPressed;
+        prevTriggerPressed = triggerPressed;
+    }
+
+    private bool GetButtonPressed(InputDevice dev, XRButton button)
+    {
+        switch (button)
+        {
+            case XRButton.Grip:
+                if (dev.TryGetFeatureValue(CommonUsages.gripButton, out bool gripBtn))
+                    return gripBtn;
+                // fallback: grip axis
+                if (dev.TryGetFeatureValue(CommonUsages.grip, out float gripAxis))
+                    return gripAxis > 0.75f;
+                return false;
+
+            case XRButton.Primary:
+                if (dev.TryGetFeatureValue(CommonUsages.primaryButton, out bool primaryBtn))
+                    return primaryBtn;
+                return false;
+
+            case XRButton.Secondary:
+                if (dev.TryGetFeatureValue(CommonUsages.secondaryButton, out bool secondaryBtn))
+                    return secondaryBtn;
+                return false;
+
+            case XRButton.Trigger:
+                // prefer triggerButton if supported
+                if (dev.TryGetFeatureValue(CommonUsages.triggerButton, out bool trigBtn))
+                    return trigBtn;
+
+                // fallback to trigger axis
+                if (dev.TryGetFeatureValue(CommonUsages.trigger, out float trigAxis))
+                    return trigAxis > TriggerAxisPressThreshold;
+
+                return false;
+
+            default:
+                return false;
+        }
+    }
+
+    private static InputDevice GetXRDevice(bool left)
+    {
+        var desired = InputDeviceCharacteristics.Controller | (left ? InputDeviceCharacteristics.Left : InputDeviceCharacteristics.Right);
+        var devices = new List<InputDevice>();
+        InputDevices.GetDevicesWithCharacteristics(desired, devices);
+
+        if (devices.Count > 0)
+            return devices[0];
+
+        return default;
+    }
+
+    // ---------------------------
     // PUBLIC INPUT (call from buttons / XR / whatever)
     // ---------------------------
 
@@ -166,6 +330,24 @@ public class HandGrabber : MonoBehaviourPun
 
         if (heldItemId == 0) TryGrab();
         else Release();
+    }
+
+    public void SecondaryButton()
+    {
+        if (Mode != GrabberMode.LocalHand) return;
+        if (heldItemId == 0) return;
+
+        // “Secondary()” on held item (if any)
+        TryInvokeHeldItemVoid("Secondary");
+    }
+
+    public void TriggerButton()
+    {
+        if (Mode != GrabberMode.LocalHand) return;
+        if (heldItemId == 0) return;
+
+        // “Trigger()” on held item (if any)
+        TryInvokeHeldItemVoid("Trigger");
     }
 
     public void ForceRelease()
@@ -362,6 +544,63 @@ public class HandGrabber : MonoBehaviourPun
     }
 
     // ---------------------------
+    // ITEM ACTION INVOKE (LOCAL HAND)
+    // ---------------------------
+
+    private void TryInvokeHeldItemVoid(string methodName)
+    {
+        if (heldItemId == 0) return;
+
+        var item = FindItem(heldItemId);
+        if (!item)
+        {
+            Log($"Action '{methodName}': held item {heldItemId} not found.");
+            return;
+        }
+
+        bool invokedAny = false;
+
+        // “held object” = the NetworkItem root + its children
+        var behaviours = item.GetComponentsInChildren<MonoBehaviour>(IncludeInactiveActionReceivers);
+
+        for (int i = 0; i < behaviours.Length; i++)
+        {
+            var b = behaviours[i];
+            if (!b) continue;
+
+            MethodInfo m = b.GetType().GetMethod(
+                methodName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+            );
+
+            if (m == null) continue;
+            if (m.ReturnType != typeof(void)) continue;
+
+            var ps = m.GetParameters();
+            if (ps != null && ps.Length != 0) continue;
+
+            try
+            {
+                m.Invoke(b, null);
+                invokedAny = true;
+
+                if (DebugLogs)
+                    Debug.Log($"[HandGrabber {(IsLeftHand ? "L" : "R")}] Called {b.GetType().Name}.{methodName}() on item={heldItemId}", item);
+
+                if (!CallAllActionReceivers) break;
+            }
+            catch (Exception e)
+            {
+                if (DebugLogs)
+                    Debug.LogWarning($"[HandGrabber] {methodName}() invoke failed on {b.GetType().Name} (item={heldItemId}): {e.Message}", item);
+            }
+        }
+
+        if (!invokedAny)
+            Log($"No {methodName}() found on held item {heldItemId} (searched {behaviours.Length} components).");
+    }
+
+    // ---------------------------
     // ITEM FINDING (no PhotonView required on items)
     // ---------------------------
 
@@ -478,8 +717,15 @@ public class HandGrabber : MonoBehaviourPun
             {
                 UnityEditor.EditorGUILayout.Space(8);
                 UnityEditor.EditorGUILayout.LabelField("Test", UnityEditor.EditorStyles.boldLabel);
+
                 if (GUILayout.Button("PrimaryButton() (Grab/Release Toggle)"))
                     hg.PrimaryButton();
+
+                if (GUILayout.Button("SecondaryButton() (calls Secondary() on held item)"))
+                    hg.SecondaryButton();
+
+                if (GUILayout.Button("TriggerButton() (calls Trigger() on held item)"))
+                    hg.TriggerButton();
             }
         }
     }

@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4326515771597231}
   - component: {fileID: 64794893556753656}
-  m_Layer: 12
+  m_Layer: 3
   m_Name: Collider
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -65,7 +65,7 @@ GameObject:
   - component: {fileID: 4711573343265485}
   - component: {fileID: 33264025972726417}
   - component: {fileID: 23648961084891084}
-  m_Layer: 12
+  m_Layer: 3
   m_Name: Mesh
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -115,7 +115,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 72b49cdd2b97958428bc0534060c68b0, type: 2}
+  - {fileID: 2100000, guid: 723b914cf752a9549b677c2c6633955a, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -147,7 +147,8 @@ GameObject:
   m_Component:
   - component: {fileID: 4023570760257177}
   - component: {fileID: 54559261238705363}
-  m_Layer: 12
+  - component: {fileID: 179185048401669414}
+  m_Layer: 3
   m_Name: Loot_RubberDucky
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -197,6 +198,28 @@ Rigidbody:
   m_Interpolate: 1
   m_Constraints: 0
   m_CollisionDetection: 1
+--- !u!114 &179185048401669414
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1692434093511553}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0edbb524764d2094e83d4b02218ce432, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ItemID: 0
+  ComputeItemIdOnAwake: 1
+  AutoRegister: 1
+  BuyPrice: 0
+  SellPriceOverride: 25
+  SnapGrab: 0
+  SnapLocalPosition: {x: 0, y: 0, z: 0}
+  SnapLocalEulerAngles: {x: 0, y: 0, z: 0}
+  CanBeStoredInBackpack: 1
+  DebugLogs: 0
 --- !u!1 &1754886896878437
 GameObject:
   m_ObjectHideFlags: 0
@@ -206,7 +229,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4326240286424526}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: View
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -238,7 +261,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4719012210055024}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Root
   m_TagString: Untagged
   m_Icon: {fileID: 0}

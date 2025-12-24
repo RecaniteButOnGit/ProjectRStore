@@ -1180,6 +1180,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4427045183388826}
   - component: {fileID: 195941574544006641}
+  - component: {fileID: 6990608104076389458}
   m_Layer: 11
   m_Name: ChickenController
   m_TagString: Untagged
@@ -1213,7 +1214,7 @@ NavMeshAgent:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1753591270379685}
   m_Enabled: 1
-  m_AgentTypeID: -1372625422
+  m_AgentTypeID: 0
   m_Radius: 0.5
   m_Speed: 3.5
   m_Acceleration: 128
@@ -1227,6 +1228,50 @@ NavMeshAgent:
   m_BaseOffset: 0
   m_WalkableMask: 4294967295
   m_ObstacleAvoidanceType: 0
+--- !u!114 &6990608104076389458
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1753591270379685}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 05d06788dd58ea841885626d1380684e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  MaxDurability: 100
+  Durability: 100
+  BreakOnce: 1
+  BreakCooldown: 0.05
+  OnlyDamageFromWeaponTag: 1
+  WeaponTag: Weapon
+  BreakOnCollision: 1
+  PreferFrameBasedHitterVelocity: 1
+  MinCollisionSpeed: 6
+  CollisionInstantBreak: 0
+  CollisionDamageMultiplier: 5
+  CollisionLayerMask:
+    serializedVersion: 2
+    m_Bits: 8
+  BrokenPrefab: {fileID: 0}
+  DestroyOriginal: 1
+  DisableInsteadOfDestroy: 1
+  ApplyExplosionForce: 1
+  ExplosionForce: 250
+  ExplosionRadius: 2
+  UpwardsModifier: 0.15
+  InheritVelocity: 1
+  RandomTorque: 10
+  AudioSource: {fileID: 0}
+  BreakSfx: {fileID: 0}
+  BreakVfx: {fileID: 0}
+  DropPrefabs: []
+  DropCount: 0
+  DropScatterRadius: 0.25
+  OnBroken:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &1760726396112366
 GameObject:
   m_ObjectHideFlags: 0
