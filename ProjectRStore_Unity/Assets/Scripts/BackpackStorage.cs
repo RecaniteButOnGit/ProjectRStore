@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 
 public class BackpackStorage : MonoBehaviour
@@ -16,23 +17,11 @@ public class BackpackStorage : MonoBehaviour
     public string ItemsLayerName = "Items";
 
     [Header("Store/Dump Points")]
-    [Tooltip("Optional. Where stored items will be moved (if not deactivating).")]
+    [Tooltip("Where stored items will be parented while inside the backpack. If null, uses this transform.")]
     public Transform StorePoint;
 
-    [Tooltip("Where dumped items appear when released.")]
+    [Tooltip("Where dumped items appear when released. (Best if this is OUTSIDE the MouthTrigger volume.)")]
     public Transform DumpSpawnPoint;
-
-    [Header("Pause/Hide Mode")]
-    public HideModeWhileStored HideMode = HideModeWhileStored.DeactivateGameObject;
-
-    public enum HideModeWhileStored
-    {
-        // Best "pause": stops Update/coroutines/timers (grenade timer pauses).
-        DeactivateGameObject,
-
-        // Keeps GO active, but disables visuals + colliders + physics + scripts. (Less “true pause”.)
-        DisableRenderAndPhysics
-    }
 
     [Header("Dumping")]
     [Tooltip("Start dumping when tilted at/over this many degrees away from upright.")]
@@ -49,6 +38,17 @@ public class BackpackStorage : MonoBehaviour
 
     [Tooltip("Extra downward push (helps it actually fall out).")]
     public float DownForce = 0.75f;
+
+    [Header("Intake Rules")]
+    [Tooltip("If true, backpack will NOT intake items while tilted at/over DumpStartAngle.")]
+    public bool BlockIntakeAtDumpAngle = true;
+
+    [Tooltip("If true, backpack will NOT intake items while currently dumping.")]
+    public bool BlockIntakeWhileDumping = true;
+
+    [Header("Backpack Storage Filter")]
+    [Tooltip("If true, items must have CanBeStoredInBackpack == true (usually on NetworkItem). If flag not found, item is allowed.")]
+    public bool RequireCanBeStoredInBackpackTrue = true;
 
     [Header("Open/Close Animation")]
     [Tooltip("The object that rotates locally on X when opening/closing (flap/lid).")]
@@ -70,17 +70,6 @@ public class BackpackStorage : MonoBehaviour
     {
         public GameObject root;
         public Rigidbody rb;
-
-        // For DisableRenderAndPhysics mode
-        public bool rbWasKinematic;
-        public Vector3 rbVel;
-        public Vector3 rbAngVel;
-        public readonly List<Collider> colliders = new();
-        public readonly List<Renderer> renderers = new();
-        public readonly List<Behaviour> behaviours = new(); // scripts/animators, etc
-        public readonly List<bool> behaviourEnabled = new();
-        public readonly List<bool> colliderEnabled = new();
-        public readonly List<bool> rendererEnabled = new();
     }
 
     // LIFO: newest stored is last in list
@@ -110,14 +99,14 @@ public class BackpackStorage : MonoBehaviour
 
     private void Update()
     {
-        // animate flap every frame (uses isOpen)
         AnimateFlap();
 
-        // dumping only while open
         if (!isOpen) return;
 
-        bool wantsDump = stored.Count > 0 && TiltAngleFromUpright() >= DumpStartAngle;
-        bool shouldStop = isDumping && TiltAngleFromUpright() < DumpStopAngle;
+        float tilt = TiltAngleFromUpright();
+
+        bool wantsDump = stored.Count > 0 && tilt >= DumpStartAngle;
+        bool shouldStop = isDumping && tilt < DumpStopAngle;
 
         if (!isDumping && wantsDump)
             StartDumping();
@@ -130,13 +119,7 @@ public class BackpackStorage : MonoBehaviour
     // INPUT (called by your HandGrabber reflection)
     // ----------------------------
 
-    // B button should call this (via your reflection names list)
-    public void Secondary()
-    {
-        ToggleOpen();
-    }
-
-    // harmless aliases
+    public void Secondary() => ToggleOpen();
     public void SecondaryButton() => Secondary();
     public void OnSecondary() => Secondary();
 
@@ -166,14 +149,21 @@ public class BackpackStorage : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         if (!isOpen) return;
-        if (isDumping) return; // no adding during dump
+        if (!other) return;
 
-        if (!other || other == MouthTrigger) return;
+        // ✅ no intake at dumping tilt angle
+        if (BlockIntakeAtDumpAngle && TiltAngleFromUpright() >= DumpStartAngle)
+            return;
+
+        // optional: also block intake while actively dumping
+        if (BlockIntakeWhileDumping && isDumping)
+            return;
 
         // Only accept items on Items layer (matching your setup)
-        if (itemsLayer != -1 && other.gameObject.layer != itemsLayer) return;
+        if (itemsLayer != -1 && other.gameObject.layer != itemsLayer)
+            return;
 
-        // Find a rigidbody to treat as "the item"
+        // Find the rigidbody (treat that as the item root)
         Rigidbody rb = other.attachedRigidbody;
         if (!rb) rb = other.GetComponentInParent<Rigidbody>();
         if (!rb) return;
@@ -181,127 +171,94 @@ public class BackpackStorage : MonoBehaviour
         // Don't store ourselves
         if (rb.transform.IsChildOf(transform)) return;
 
-        // Store the whole rigidbody root object (usually your item root)
         GameObject root = rb.gameObject;
-        StoreItem(root, rb);
-    }
-
-    private void StoreItem(GameObject root, Rigidbody rb)
-    {
         if (!root) return;
+
+        // Don’t store already-inactive stuff (usually means it’s already stored)
+        if (!root.activeInHierarchy) return;
+
+        // ✅ Check item flag
+        if (RequireCanBeStoredInBackpackTrue && !ItemAllowsBackpack(root))
+            return;
 
         // Prevent double-store
         for (int i = 0; i < stored.Count; i++)
             if (stored[i].root == root)
                 return;
 
-        var s = new StoredItem
-        {
-            root = root,
-            rb = rb
-        };
+        StoreItem(root, rb);
+    }
 
-        if (HideMode == HideModeWhileStored.DeactivateGameObject)
-        {
-            // "True pause": stops scripts/timers/coroutines/particles/audio.
-            root.SetActive(false);
-        }
-        else
-        {
-            // Keep active but disable visuals/physics/scripts
-            CacheAndDisable(root, s);
+    private bool ItemAllowsBackpack(GameObject root)
+    {
+        if (!root) return false;
 
-            if (StorePoint)
+        // 1) Fast path: your common item script name
+        // If your NetworkItem class exists in the project, this compiles and works.
+        // If you renamed it, the reflection fallback below still covers you.
+        var ni = root.GetComponentInParent<NetworkItem>();
+        if (ni != null)
+        {
+            if (!ni.CanBeStoredInBackpack)
             {
-                root.transform.SetParent(StorePoint, true);
-                root.transform.localPosition = Vector3.zero;
-                root.transform.localRotation = Quaternion.identity;
+                Log($"🚫 Not storable (NetworkItem.CanBeStoredInBackpack=false): {root.name}");
+                return false;
             }
-            else
-            {
-                root.transform.SetParent(transform, true);
-            }
+            return true;
         }
 
-        stored.Add(s);
+        // 2) Reflection fallback: look for a bool field/property named CanBeStoredInBackpack
+        // on any component on root or its parents.
+        var comps = root.GetComponentsInParent<Component>(true);
+        for (int i = 0; i < comps.Length; i++)
+        {
+            var c = comps[i];
+            if (!c) continue;
+
+            var t = c.GetType();
+
+            // field
+            var f = t.GetField("CanBeStoredInBackpack", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (f != null && f.FieldType == typeof(bool))
+            {
+                bool v = (bool)f.GetValue(c);
+                if (!v) Log($"🚫 Not storable ({t.Name}.CanBeStoredInBackpack=false): {root.name}");
+                return v;
+            }
+
+            // property
+            var p = t.GetProperty("CanBeStoredInBackpack", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (p != null && p.PropertyType == typeof(bool) && p.CanRead)
+            {
+                bool v = (bool)p.GetValue(c, null);
+                if (!v) Log($"🚫 Not storable ({t.Name}.CanBeStoredInBackpack=false): {root.name}");
+                return v;
+            }
+        }
+
+        // If the flag isn't found, allow by default (so random props still work)
+        return true;
+    }
+
+    private void StoreItem(GameObject root, Rigidbody rb)
+    {
+        Transform parent = StorePoint ? StorePoint : transform;
+
+        // Parent it (while still active so it keeps world pose cleanly)
+        root.transform.SetParent(parent, true);
+
+        // Kill motion so it doesn’t “resume” with old velocity later
+        if (rb)
+        {
+            rb.velocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        // Disable it (your “true pause”)
+        root.SetActive(false);
+
+        stored.Add(new StoredItem { root = root, rb = rb });
         Log($"Stored: {root.name} (count={stored.Count})");
-    }
-
-    private void CacheAndDisable(GameObject root, StoredItem s)
-    {
-        // Rigidbody
-        if (s.rb)
-        {
-            s.rbWasKinematic = s.rb.isKinematic;
-            s.rbVel = s.rb.velocity;
-            s.rbAngVel = s.rb.angularVelocity;
-
-            s.rb.isKinematic = true;
-            s.rb.velocity = Vector3.zero;
-            s.rb.angularVelocity = Vector3.zero;
-        }
-
-        // Colliders
-        root.GetComponentsInChildren(true, s.colliders);
-        for (int i = 0; i < s.colliders.Count; i++)
-        {
-            s.colliderEnabled.Add(s.colliders[i].enabled);
-            s.colliders[i].enabled = false;
-        }
-
-        // Renderers
-        root.GetComponentsInChildren(true, s.renderers);
-        for (int i = 0; i < s.renderers.Count; i++)
-        {
-            s.rendererEnabled.Add(s.renderers[i].enabled);
-            s.renderers[i].enabled = false;
-        }
-
-        // Behaviours (scripts, animators, audio, etc)
-        var allBehaviours = root.GetComponentsInChildren<Behaviour>(true);
-        foreach (var b in allBehaviours)
-        {
-            if (!b) continue;
-
-            // Don’t disable this Backpack script
-            if (b == this) continue;
-
-            s.behaviours.Add(b);
-            s.behaviourEnabled.Add(b.enabled);
-            b.enabled = false;
-        }
-    }
-
-    private void RestoreDisabled(StoredItem s)
-    {
-        // Behaviours
-        for (int i = 0; i < s.behaviours.Count; i++)
-        {
-            if (!s.behaviours[i]) continue;
-            s.behaviours[i].enabled = s.behaviourEnabled[i];
-        }
-
-        // Renderers
-        for (int i = 0; i < s.renderers.Count; i++)
-        {
-            if (!s.renderers[i]) continue;
-            s.renderers[i].enabled = s.rendererEnabled[i];
-        }
-
-        // Colliders
-        for (int i = 0; i < s.colliders.Count; i++)
-        {
-            if (!s.colliders[i]) continue;
-            s.colliders[i].enabled = s.colliderEnabled[i];
-        }
-
-        // Rigidbody
-        if (s.rb)
-        {
-            s.rb.isKinematic = false;
-            s.rb.velocity = Vector3.zero;
-            s.rb.angularVelocity = Vector3.zero;
-        }
     }
 
     // ----------------------------
@@ -334,7 +291,7 @@ public class BackpackStorage : MonoBehaviour
     {
         while (isOpen && isDumping && stored.Count > 0 && TiltAngleFromUpright() >= DumpStopAngle)
         {
-            // LIFO: newest item first
+            // LIFO: most recent stored dumped first
             var s = stored[stored.Count - 1];
             stored.RemoveAt(stored.Count - 1);
 
@@ -342,7 +299,6 @@ public class BackpackStorage : MonoBehaviour
 
             yield return new WaitForSeconds(DumpInterval);
 
-            // If player stops tipping, stop quickly
             if (TiltAngleFromUpright() < DumpStopAngle)
                 break;
         }
@@ -358,25 +314,25 @@ public class BackpackStorage : MonoBehaviour
 
         Transform spawn = DumpSpawnPoint ? DumpSpawnPoint : transform;
 
-        if (HideMode == HideModeWhileStored.DeactivateGameObject)
-        {
-            s.root.SetActive(true);
-        }
-        else
-        {
-            RestoreDisabled(s);
-        }
+        // Keep it inactive while we reposition
+        if (s.root.activeSelf) s.root.SetActive(false);
 
-        // Place item at spawn
+        // Unparent, move, rotate
         s.root.transform.SetParent(null, true);
         s.root.transform.position = spawn.position;
         s.root.transform.rotation = spawn.rotation;
 
-        // Give it a little “fall out”
-        if (s.rb)
+        // Enable it again
+        s.root.SetActive(true);
+
+        Rigidbody rb = s.rb ? s.rb : s.root.GetComponentInChildren<Rigidbody>();
+
+        // Push it out
+        if (rb)
         {
+            rb.WakeUp();
             Vector3 push = (spawn.forward * EjectForce) + (Vector3.down * DownForce);
-            s.rb.AddForce(push, ForceMode.VelocityChange);
+            rb.AddForce(push, ForceMode.VelocityChange);
         }
 
         Log($"Dumped: {s.root.name} (remaining={stored.Count})");
@@ -398,11 +354,9 @@ public class BackpackStorage : MonoBehaviour
 
         float targetX = isOpen ? OpenXAngle : ClosedXAngle;
 
-        // Convert current localEulerAngles.x to signed [-180,180] so lerp doesn’t flip at 360->0
         float curX = LidOrFlap.localEulerAngles.x;
         if (curX > 180f) curX -= 360f;
 
-        // Smooth exponential lerp (frame-rate independent)
         float t = 1f - Mathf.Exp(-RotateLerpSpeed * Time.deltaTime);
         float newX = Mathf.Lerp(curX, targetX, t);
 

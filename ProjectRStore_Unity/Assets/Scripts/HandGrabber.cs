@@ -542,8 +542,15 @@ public class HandGrabber : MonoBehaviourPun
         var ni = rb.GetComponentInParent<NetworkItem>();
         if (!ni || ni.ItemID == 0) { Log($"TryGrab: '{rb.name}' missing NetworkItem/ItemID."); return; }
 
-        Vector3 offsetLocalPos = Quaternion.Inverse(LocalHandAnchor.rotation) * (rb.position - LocalHandAnchor.position);
-        Quaternion offsetLocalRot = Quaternion.Inverse(LocalHandAnchor.rotation) * rb.rotation;
+        // ✅ SnapGrab: ignore offsets and lock item directly to the hand anchor pose
+        bool snap = ni.SnapGrab;
+        Vector3 offsetLocalPos = snap
+            ? Vector3.zero
+            : Quaternion.Inverse(LocalHandAnchor.rotation) * (rb.position - LocalHandAnchor.position);
+
+        Quaternion offsetLocalRot = snap
+            ? Quaternion.identity
+            : Quaternion.Inverse(LocalHandAnchor.rotation) * rb.rotation;
 
         heldItemId = ni.ItemID;
 
@@ -555,7 +562,7 @@ public class HandGrabber : MonoBehaviourPun
             offsetLocalRot
         );
 
-        Log($"Grab -> item={heldItemId}");
+        Log($"Grab -> item={heldItemId} (SnapGrab={snap})");
     }
 
     private void Release()
