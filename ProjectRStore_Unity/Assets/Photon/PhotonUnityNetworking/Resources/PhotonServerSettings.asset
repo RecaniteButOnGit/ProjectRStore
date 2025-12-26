@@ -70,6 +70,9 @@ MonoBehaviour:
   - RPC_SetState
   - RPC_GrantMoney
   - RPC_SetOutputText
+  - RPC_DeductMoneyLocal
+  - RPC_RequestBuy
+  - RPC_SpawnItem_AllClients
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 0
