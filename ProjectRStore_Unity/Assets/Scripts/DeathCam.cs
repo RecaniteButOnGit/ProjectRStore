@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using Photon.Pun;
 using UnityEngine;
 
@@ -48,6 +49,16 @@ public class DeathCam : MonoBehaviour
 
     private RagdollDeath _cachedOwnedRagdoll;
 
+    // NEW (requested): collider temp-disable around MoveTarget teleport
+    private const float ColliderOffBeforeMove = 0.1f;
+    private const float ColliderOffAfterMove = 0.1f;
+
+    private struct ColliderState
+    {
+        public Collider col;
+        public bool enabled;
+    }
+
     /// <summary>
     /// Public void to call when the player dies.
     /// </summary>
@@ -80,9 +91,20 @@ public class DeathCam : MonoBehaviour
                 _prevMovePos = MoveTarget.position;
                 _hasPrevMovePos = true;
 
-                MoveTarget.position = MoveWorldPosition;
+                // NEW (requested): All colliders off > wait 0.1s > move > wait 0.1s > restore original states
+                var colliderStates = DisableAllSceneColliders();
 
-                if (DebugLogs) Debug.Log($"[DeathCam] Moved {MoveTarget.name} to {MoveWorldPosition}", this);
+                yield return new WaitForSeconds(ColliderOffBeforeMove);
+
+                if (MoveTarget != null)
+                {
+                    MoveTarget.position = MoveWorldPosition;
+                    if (DebugLogs) Debug.Log($"[DeathCam] Moved {MoveTarget.name} to {MoveWorldPosition}", this);
+                }
+
+                yield return new WaitForSeconds(ColliderOffAfterMove);
+
+                RestoreAllSceneColliders(colliderStates);
             }
         }
 
@@ -102,6 +124,39 @@ public class DeathCam : MonoBehaviour
         if (DebugLogs) Debug.Log("[DeathCam] Reverted.", this);
 
         _routine = null;
+    }
+
+    private List<ColliderState> DisableAllSceneColliders()
+    {
+        var cols = FindObjectsOfType<Collider>(true);
+        var states = new List<ColliderState>(cols.Length);
+
+        for (int i = 0; i < cols.Length; i++)
+        {
+            var c = cols[i];
+            if (c == null) continue;
+
+            states.Add(new ColliderState { col = c, enabled = c.enabled });
+            c.enabled = false;
+        }
+
+        if (DebugLogs) Debug.Log($"[DeathCam] Disabled {states.Count} colliders.", this);
+        return states;
+    }
+
+    private void RestoreAllSceneColliders(List<ColliderState> states)
+    {
+        if (states == null) return;
+
+        for (int i = 0; i < states.Count; i++)
+        {
+            var c = states[i].col;
+            if (c == null) continue;
+
+            c.enabled = states[i].enabled;
+        }
+
+        if (DebugLogs) Debug.Log($"[DeathCam] Restored {states.Count} colliders.", this);
     }
 
     private IEnumerator FindAndTriggerOwnedMirrorRagdoll()

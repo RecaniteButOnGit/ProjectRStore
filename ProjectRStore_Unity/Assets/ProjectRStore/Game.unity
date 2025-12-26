@@ -47255,6 +47255,8 @@ MonoBehaviour:
   MoneyText: {fileID: 1428232156234141544}
   DeathCamReceiver: {fileID: 1428232156234141546}
   TriggerDeathWhenHealthZero: 1
+  RespawnAfterDeathSeconds: 5.1
+  NoDeathAfterDeathSeconds: 5.2
 --- !u!4 &831717195
 Transform:
   m_ObjectHideFlags: 0
@@ -116218,6 +116220,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: Gorilla Rig
       objectReference: {fileID: 0}
+    - target: {fileID: 6097326508834981679, guid: cb09b56742e00cf43b15c7110ab40ff8, type: 3}
+      propertyPath: m_Interpolate
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6097326508834981679, guid: cb09b56742e00cf43b15c7110ab40ff8, type: 3}
+      propertyPath: m_CollisionDetection
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6097326508834981713, guid: cb09b56742e00cf43b15c7110ab40ff8, type: 3}
       propertyPath: m_LocalPosition.x
       value: 1.175
@@ -116229,6 +116239,10 @@ PrefabInstance:
     - target: {fileID: 6097326508834981714, guid: cb09b56742e00cf43b15c7110ab40ff8, type: 3}
       propertyPath: m_TagString
       value: Player
+      objectReference: {fileID: 0}
+    - target: {fileID: 8600349747460880601, guid: cb09b56742e00cf43b15c7110ab40ff8, type: 3}
+      propertyPath: MoveDelay
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

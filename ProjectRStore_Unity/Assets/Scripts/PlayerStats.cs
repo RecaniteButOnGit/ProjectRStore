@@ -20,6 +20,21 @@ public class PlayerStats : MonoBehaviour
     [Tooltip("If true, triggers DeathCamReceiver.Death() when Health reaches 0. Only fires once until Health goes above 0 again.")]
     public bool TriggerDeathWhenHealthZero = true;
 
+    // ---------------------------
+    // NEW (requested)
+    // ---------------------------
+    [Header("Respawn / No-Die Window (NEW)")]
+    [Tooltip("How long after dying to set Health back to 100.")]
+    public float RespawnAfterDeathSeconds = 5.1f;
+
+    [Tooltip("After a death, you cannot die again until this many seconds have passed.")]
+    public float NoDeathAfterDeathSeconds = 5.2f;
+
+    private float _noDeathUntilTime = -1f;
+    private bool _respawnPending;
+    private float _respawnAtTime = -1f;
+    // ---------------------------
+
     private const int MaxHealth = 100;
 
     private const string MoneyKey = "PlayerStats_Money";
@@ -52,6 +67,19 @@ public class PlayerStats : MonoBehaviour
 
     private void Update()
     {
+        // ---------------------------
+        // NEW (requested): respawn after death
+        // ---------------------------
+        if (_respawnPending && Time.unscaledTime >= _respawnAtTime)
+        {
+            _respawnPending = false;
+            Health = MaxHealth;
+            _deathFired = false; // alive again
+            ClampHealth();
+            UpdateUIIfChanged();
+        }
+        // ---------------------------
+
         // Health regen: +1 every second up to 100
         if (Time.unscaledTime >= _nextRegenTime)
         {
@@ -89,6 +117,14 @@ public class PlayerStats : MonoBehaviour
         Health -= amount;
         if (Health < 0) Health = 0;
 
+        // ---------------------------
+        // NEW (requested): can't die within 5.2s after previous death
+        // If damage would put you at 0 during the no-die window, keep you barely alive.
+        // ---------------------------
+        if (Time.unscaledTime < _noDeathUntilTime && Health <= 0)
+            Health = 1;
+        // ---------------------------
+
         CheckDeathTrigger();
         UpdateUIIfChanged();
     }
@@ -121,6 +157,19 @@ public class PlayerStats : MonoBehaviour
         if (!TriggerDeathWhenHealthZero)
             return;
 
+        // ---------------------------
+        // NEW (requested): can't die within 5.2s after previous death
+        // If something sets you to 0 HP during the no-die window (not through Damage),
+        // prevent a new death by popping you back to 1 HP.
+        // (Doesn't interfere with the original death because _deathFired is true then.)
+        // ---------------------------
+        if (!_deathFired && Health <= 0 && Time.unscaledTime < _noDeathUntilTime)
+        {
+            Health = 1;
+            return;
+        }
+        // ---------------------------
+
         // Reset latch once you're alive again
         if (Health > 0)
         {
@@ -133,6 +182,16 @@ public class PlayerStats : MonoBehaviour
             return;
 
         _deathFired = true;
+
+        // ---------------------------
+        // NEW (requested):
+        // 1) Schedule respawn to 100 HP after 5.1s
+        // 2) Start a no-die window for 5.2s after this death
+        // ---------------------------
+        _respawnPending = true;
+        _respawnAtTime = Time.unscaledTime + RespawnAfterDeathSeconds;
+        _noDeathUntilTime = Time.unscaledTime + NoDeathAfterDeathSeconds;
+        // ---------------------------
 
         // Call DeathCam (clean + direct, like a responsible sprinkle of garlic salt)
         if (DeathCamReceiver != null)
