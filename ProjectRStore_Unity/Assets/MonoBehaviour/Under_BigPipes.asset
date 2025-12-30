@@ -9,6 +9,17 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 01ae7d9e403e30f499aa25970b6407d8, type: 3}
+  m_Script: {fileID: -1272130176, guid: 131d2a30c4b3ec32e1e600a6fbc1166a, type: 3}
   m_Name: Under_BigPipes
   m_EditorClassIdentifier:
+  realtimeShadowColor: {r: 0, g: 0, b: 0, a: 1}
+  ambientColor: {r: 0, g: 0, b: 0, a: 1}
+  skyboxColor: {r: 0, g: 0, b: 0, a: 1}
+  fogColor: {r: 0.047169805, g: 0, b: 0, a: 1}
+  fogDensity: 0.06
+  directionalLightColor: {r: 1, g: 1, b: 1, a: 1}
+  directionalLightIntensity: 0
+  spookiness: 1
+  reverbPreset: 9
+  useCustomGravity: 0
+  customGravity: {x: 0, y: -1, z: 0}

@@ -9,6 +9,32 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d8233d1e51ca450a45686379a4b8e0bc, type: 3}
+  m_Script: {fileID: 1909266688, guid: d66109d3cc6dce861a28e5eb2c3a33c0, type: 3}
   m_Name: MLP Mid Scene
   m_EditorClassIdentifier:
+  workflow: 0
+  probesSpacing: 0
+  cornersDetectionThreshold: 0
+  cornerProbesSpacing: 0
+  distanceFromGeometry: 0
+  divideVolumeOnProbesCount: 0
+  useVolumeBottom: 0
+  selectedObjectsAsGlobal: 0
+  maxHeightAboveGeometry: 0
+  maxHeightAboveTerrain: 0
+  collisionDetectionLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  collisionDetectionRadius: 0
+  considerDistanceToLights: 0
+  fillingMode: 0
+  lightIntensityThreshold: 0
+  cullByColor: 0
+  colorThreshold: 0
+  fillEquivalentVolume: 0
+  equivalentVolumeFillingRate: 0
+  fillUnlitVolume: 0
+  unlitVolumeFillingRate: 0
+  optimizeForMixedLighting: 0
+  tryPreventLightLeakage: 0
+  boundsDisplayMode: 0

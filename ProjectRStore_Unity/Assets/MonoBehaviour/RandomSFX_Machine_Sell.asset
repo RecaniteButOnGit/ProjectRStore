@@ -9,6 +9,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 132f1108f03ed6a34f142fe7e670de93, type: 3}
+  m_Script: {fileID: -2031506958, guid: 131d2a30c4b3ec32e1e600a6fbc1166a, type: 3}
   m_Name: RandomSFX_Machine_Sell
   m_EditorClassIdentifier:
+  audioClips:
+  - {fileID: 8300000, guid: 41983fcc14bbe104c86eb5f4cb727314, type: 3}
+  volume: 1
+  pitchRange: {x: 0.95, y: 1.05}
+  rolloffMode: 2
+  falloffDistance: 60
